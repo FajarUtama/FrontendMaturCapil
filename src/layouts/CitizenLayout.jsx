@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useMockData } from '../context/MockDataContext';
+import { useAppData } from '../context/AppDataContext';
 import { Home, PlusCircle, History, User, Bell, LogOut, ShieldAlert } from 'lucide-react';
 import { NotificationToast } from '../components/NotificationToast';
 
@@ -12,7 +12,7 @@ const navLinks = [
 ];
 
 export const CitizenLayout = () => {
-  const { currentUser, logout, notifications } = useMockData();
+  const { currentUser, logout, notifications } = useAppData();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);

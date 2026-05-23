@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { Mail, ShieldAlert, ArrowRight, ShieldCheck } from 'lucide-react';
 import { PasswordField } from '../../components/auth/PasswordField';
 import { DEMO_ACCOUNTS } from '../../constants/demoAccounts';
 
 export const AdminLogin = () => {
-  const { login, currentUser } = useMockData();
+  const { login, currentUser } = useAppData();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -32,16 +32,12 @@ export const AdminLogin = () => {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const result = login(email, password, 'admin');
+    (async () => {
+      const result = await login(email, password, 'admin');
       setIsLoading(false);
-
-      if (result.success) {
-        navigate('/admin/dashboard');
-      } else {
-        setError(result.message);
-      }
-    }, 600);
+      if (result.success) navigate('/admin/dashboard');
+      else setError(result.message);
+    })();
   };
 
   // Direct login credentials injector for testing

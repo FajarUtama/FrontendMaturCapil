@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { History, FileText, ChevronRight, MessageSquare, Plus, Clock, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
 
 export const CitizenHistory = () => {
-  const { complaints, currentUser } = useMockData();
+  const { complaints, currentUser } = useAppData();
   const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState('all');
 

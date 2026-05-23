@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import {
   User,
   LogOut,
@@ -25,7 +25,7 @@ export const CitizenProfile = () => {
     sendEmailVerificationOtp,
     resendEmailVerificationOtp,
     verifyCurrentUserEmail,
-  } = useMockData();
+  } = useAppData();
   const navigate = useNavigate();
 
   const [otpStep, setOtpStep] = useState('idle');
@@ -61,9 +61,9 @@ export const CitizenProfile = () => {
     navigate('/maturcapil');
   };
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     setVerifyError('');
-    const result = sendEmailVerificationOtp();
+    const result = await sendEmailVerificationOtp();
     if (result.success) {
       setDemoOtpHint(result.demoOtp || '');
       setOtpStep('otp');
@@ -74,9 +74,9 @@ export const CitizenProfile = () => {
     }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     setVerifyError('');
-    const result = resendEmailVerificationOtp();
+    const result = await resendEmailVerificationOtp();
     if (result.success) {
       setDemoOtpHint(result.demoOtp || '');
       setResendCooldown(Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000));
@@ -93,8 +93,8 @@ export const CitizenProfile = () => {
       return;
     }
     setVerifyLoading(true);
-    setTimeout(() => {
-      const result = verifyCurrentUserEmail(otp);
+    (async () => {
+      const result = await verifyCurrentUserEmail(otp);
       setVerifyLoading(false);
       if (result.success) {
         setOtpStep('idle');
@@ -103,7 +103,7 @@ export const CitizenProfile = () => {
       } else {
         setVerifyError(result.message);
       }
-    }, 400);
+    })();
   };
 
   return (

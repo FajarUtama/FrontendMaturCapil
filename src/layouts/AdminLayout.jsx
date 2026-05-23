@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useMockData } from '../context/MockDataContext';
+import { useAppData } from '../context/AppDataContext';
 import {
   LayoutDashboard,
   FileSpreadsheet,
@@ -25,7 +25,7 @@ const navLinkClass = ({ isActive }) =>
   }`;
 
 export const AdminLayout = () => {
-  const { currentUser, logout, notifications, hasPermission } = useMockData();
+  const { currentUser, logout, notifications, hasPermission } = useAppData();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { 
   Search, 
   Tag, 
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const AdminComplaints = () => {
-  const { complaints, categories } = useMockData();
+  const { complaints, categories } = useAppData();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 

@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { useMockData } from '../context/MockDataContext';
+import { useAppData } from '../context/AppDataContext';
 import { Bell, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 export const NotificationToast = () => {
-  const { notifications, removeNotification } = useMockData();
+  const { notifications, removeNotification } = useAppData();
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">

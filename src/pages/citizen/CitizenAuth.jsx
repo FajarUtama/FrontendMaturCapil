@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import {
   Mail,
   User,
@@ -23,7 +23,7 @@ export const CitizenAuth = () => {
     registerCitizenVerify,
     resendRegistrationOtp,
     currentUser,
-  } = useMockData();
+  } = useAppData();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/maturcapil';
@@ -80,20 +80,20 @@ export const CitizenAuth = () => {
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      const result = login(email, password, 'citizen');
+    (async () => {
+      const result = await login(email, password, 'citizen');
       setIsLoading(false);
       if (result.success) navigate(redirect);
       else setError(result.message);
-    }, 500);
+    })();
   };
 
   const handleRegisterForm = (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    setTimeout(() => {
-      const result = registerCitizenStart({
+    (async () => {
+      const result = await registerCitizenStart({
         name,
         nik,
         email,
@@ -110,7 +110,7 @@ export const CitizenAuth = () => {
       } else {
         setError(result.message);
       }
-    }, 600);
+    })();
   };
 
   const handleVerifyOtp = (e) => {
@@ -121,17 +121,17 @@ export const CitizenAuth = () => {
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      const result = registerCitizenVerify(pendingEmail, otp);
+    (async () => {
+      const result = await registerCitizenVerify(pendingEmail, otp);
       setIsLoading(false);
       if (result.success) navigate(redirect);
       else setError(result.message);
-    }, 500);
+    })();
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     setError('');
-    const result = resendRegistrationOtp(pendingEmail);
+    const result = await resendRegistrationOtp(pendingEmail);
     if (result.success) {
       setDemoOtpHint(result.demoOtp || '');
       setResendCooldown(Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000));

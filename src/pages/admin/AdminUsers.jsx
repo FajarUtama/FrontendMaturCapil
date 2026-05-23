@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { PermissionCheckboxGrid } from '../../components/admin/PermissionCheckboxGrid';
 import { maskUserField } from '../../utils/masking';
 import { STATUS_LABELS } from '../../constants/permissions';
@@ -48,7 +48,7 @@ export const AdminUsers = () => {
     resetUserPassword,
     updateAdminPermissions,
     getUserComplaints,
-  } = useMockData();
+  } = useAppData();
 
   const [tab, setTab] = useState('citizen');
   const [search, setSearch] = useState('');
@@ -120,13 +120,13 @@ export const AdminUsers = () => {
     setModal('reset');
   };
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     setError('');
     const result =
       tab === 'citizen'
-        ? createCitizen(form)
-        : createAdmin(form.name, form.email, form.password, form.permissions, form.nik);
+        ? await createCitizen(form)
+        : await createAdmin(form.name, form.email, form.password, form.permissions, form.nik);
     if (result.success) {
       setSuccess(tab === 'citizen' ? 'Warga berhasil ditambahkan.' : 'Admin berhasil ditambahkan.');
       setModal(null);
@@ -135,10 +135,10 @@ export const AdminUsers = () => {
     }
   };
 
-  const handleEdit = (e) => {
+  const handleEdit = async (e) => {
     e.preventDefault();
     setError('');
-    const result = updateUser(form.id, {
+    const result = await updateUser(form.id, {
       name: form.name,
       email: form.email,
       nik: form.nik,
@@ -152,9 +152,9 @@ export const AdminUsers = () => {
     }
   };
 
-  const handlePermissions = (e) => {
+  const handlePermissions = async (e) => {
     e.preventDefault();
-    const result = updateAdminPermissions(form.id, form.permissions);
+    const result = await updateAdminPermissions(form.id, form.permissions);
     if (result.success) {
       setSuccess('Hak akses admin berhasil diperbarui.');
       setModal(null);
@@ -163,9 +163,9 @@ export const AdminUsers = () => {
     }
   };
 
-  const handleReset = (e) => {
+  const handleReset = async (e) => {
     e.preventDefault();
-    const result = resetUserPassword(form.id, resetPwd, forceReset);
+    const result = await resetUserPassword(form.id, resetPwd, forceReset);
     if (result.success) {
       setSuccess('Password berhasil direset. Notifikasi email terkirim (simulasi).');
       setModal(null);
@@ -174,9 +174,9 @@ export const AdminUsers = () => {
     }
   };
 
-  const handleDeactivate = (user) => {
+  const handleDeactivate = async (user) => {
     if (!window.confirm(`Nonaktifkan akun ${user.name}?`)) return;
-    const result = deactivateUser(user.id);
+    const result = await deactivateUser(user.id);
     if (result.success) setSuccess(`Akun ${user.name} dinonaktifkan.`);
     else setError(result.message);
   };

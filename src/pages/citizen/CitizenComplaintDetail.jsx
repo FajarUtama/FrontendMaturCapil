@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
+import { CHAT_POLL_INTERVAL_MS } from '../../config/env';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -24,8 +25,10 @@ export const CitizenComplaintDetail = () => {
     statusLogs, 
     chats, 
     currentUser, 
-    addChatMessage 
-  } = useMockData();
+    addChatMessage,
+    loadComplaintExtras,
+    isApiMode,
+  } = useAppData();
 
   const [chatMessage, setChatMessage] = useState('');
   const [rating, setRating] = useState(0);
@@ -46,10 +49,17 @@ export const CitizenComplaintDetail = () => {
     }
   }, [complaint, navigate]);
 
-  // Scroll to bottom of chat
+  useEffect(() => {
+    if (!id) return;
+    loadComplaintExtras(id);
+    if (!isApiMode) return undefined;
+    const timer = setInterval(() => loadComplaintExtras(id), CHAT_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [id, isApiMode, loadComplaintExtras]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chats]);
+  }, [chats, id]);
 
   if (!complaint || !currentUser) return null;
 
@@ -57,12 +67,12 @@ export const CitizenComplaintDetail = () => {
   const logs = statusLogs.filter(log => log.complaint_id === complaint.id);
   const complaintChats = chats.filter(chat => chat.complaint_id === complaint.id);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
-
-    addChatMessage(complaint.id, chatMessage, currentUser.id);
+    const msg = chatMessage;
     setChatMessage('');
+    await addChatMessage(complaint.id, msg, currentUser.id);
   };
 
   const handleFeedbackSubmit = (e) => {

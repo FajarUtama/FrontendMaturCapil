@@ -19,11 +19,12 @@ export const login = (portalType, email, password) =>
       body: { email, password, portal: portalType },
       auth: false,
     });
-    const user = mapUser(data.user ?? data);
-    if (data.access_token ?? data.accessToken) {
+    const tokenPayload = data?.access_token ? data : data;
+    const user = mapUser(tokenPayload.user ?? data.user ?? data);
+    if (tokenPayload.access_token ?? tokenPayload.accessToken) {
       setAuthTokens({
-        accessToken: data.access_token ?? data.accessToken,
-        refreshToken: data.refresh_token ?? data.refreshToken,
+        accessToken: tokenPayload.access_token ?? tokenPayload.accessToken,
+        refreshToken: tokenPayload.refresh_token ?? tokenPayload.refreshToken,
       });
     }
     return { success: true, user, ...meta };
@@ -76,11 +77,12 @@ export const registerCitizenVerify = (email, otpCode) =>
       body: { email, otp: otpCode },
       auth: false,
     });
-    const user = mapUser(data.user ?? data);
-    if (data.access_token ?? data.accessToken) {
+    const tokenPayload = data?.access_token ? data : data;
+    const user = mapUser(tokenPayload.user ?? data.user ?? data);
+    if (tokenPayload.access_token ?? tokenPayload.accessToken) {
       setAuthTokens({
-        accessToken: data.access_token ?? data.accessToken,
-        refreshToken: data.refresh_token ?? data.refreshToken,
+        accessToken: tokenPayload.access_token ?? tokenPayload.accessToken,
+        refreshToken: tokenPayload.refresh_token ?? tokenPayload.refreshToken,
       });
     }
     return { success: true, user, ...meta };

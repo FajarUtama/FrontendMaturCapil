@@ -1,6 +1,9 @@
 # Spesifikasi API Backend — MaturCapil Semarang
 
-Dokumen ini untuk tim **Backend**. Frontend (`MaturCapilFrontend`) sudah menyiapkan layer service di `src/services/` dengan asumsi kontrak di bawah ini.
+> **Dokumen implementasi resmi backend:** `MaturCapilBackend/docs/API_DOCUMENTATION.md`  
+> Frontend terintegrasi via `ApiDataProvider` + `src/services/` saat `VITE_USE_MOCK_API=false`.
+
+Dokumen ini untuk tim **Backend** (salinan kontrak awal). Frontend (`MaturCapilFrontend`) memakai layer service di `src/services/` dengan asumsi kontrak di bawah ini.
 
 **Base URL (contoh):** `https://api.example.com/api/v1`  
 **Env FE:** `VITE_API_BASE_URL`

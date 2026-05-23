@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { History, FileDown, Search, ShieldCheck, Lock } from 'lucide-react';
 
 const ACTION_LABELS = {
@@ -20,7 +20,7 @@ const ACTION_LABELS = {
 };
 
 export const AdminAuditLogs = () => {
-  const { auditLogs, hasPermission } = useMockData();
+  const { auditLogs, hasPermission } = useAppData();
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
 

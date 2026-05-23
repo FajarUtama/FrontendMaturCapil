@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
+import { CHAT_POLL_INTERVAL_MS } from '../../config/env';
 import {
   ArrowLeft,
   MapPin,
@@ -29,8 +30,10 @@ export const AdminComplaintDetail = () => {
     currentUser,
     updateComplaintStatus,
     closeComplaint,
-    addChatMessage
-  } = useMockData();
+    addChatMessage,
+    loadComplaintExtras,
+    isApiMode,
+  } = useAppData();
 
   const [chatMessage, setChatMessage] = useState('');
   const [rejectNote, setRejectNote] = useState('');
@@ -57,10 +60,17 @@ export const AdminComplaintDetail = () => {
     }
   }, [complaint, navigate]);
 
-  // Scroll to bottom of chat
+  useEffect(() => {
+    if (!id) return;
+    loadComplaintExtras(id);
+    if (!isApiMode) return undefined;
+    const timer = setInterval(() => loadComplaintExtras(id), CHAT_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [id, isApiMode, loadComplaintExtras]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chats]);
+  }, [chats, id]);
 
   if (!complaint || !currentUser) return null;
 
@@ -69,41 +79,24 @@ export const AdminComplaintDetail = () => {
   const complaintChats = chats.filter(chat => chat.complaint_id === complaint.id);
 
   // Chat message send handler
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
-
-    addChatMessage(complaint.id, chatMessage, currentUser.id);
-
-    // Simulate Citizen auto response after 3 seconds for admin testing!
-    setTimeout(() => {
-      const autoResponse = {
-        id: `chat-${Date.now()}`,
-        complaint_id: complaint.id,
-        sender_id: complaint.user_id,
-        sender_name: complaint.user_name,
-        message: `Terima kasih atas responnya, Ibu/Bapak Admin. Saya sangat menghargai bantuan tim Dispendukcapil Semarang dalam memproses aduan saya ini.`,
-        created_at: new Date().toISOString()
-      };
-      chats.push(autoResponse); // simulated write
-      // We manually trigger state re-render by appending to local storage
-      localStorage.setItem('mc_chats', JSON.stringify(chats));
-    }, 2800);
-
+    const msg = chatMessage;
     setChatMessage('');
+    await addChatMessage(complaint.id, msg, currentUser.id);
   };
 
-  // Status transitions
-  const handleApprove = () => {
+  const handleApprove = async () => {
     const note = verifyNote.trim() || 'Aduan disetujui untuk diproses lebih lanjut oleh Operator Pelayanan.';
-    updateComplaintStatus(complaint.id, 'Diproses', note);
+    await updateComplaintStatus(complaint.id, 'Diproses', note);
     setVerifyNote('');
   };
 
-  const handleRejectSubmit = (e) => {
+  const handleRejectSubmit = async (e) => {
     e.preventDefault();
     if (!rejectNote.trim()) return;
-    updateComplaintStatus(complaint.id, 'Ditolak', `Aduan ditolak. Alasan: ${rejectNote}`);
+    await updateComplaintStatus(complaint.id, 'Ditolak', `Aduan ditolak. Alasan: ${rejectNote}`);
     setRejectNote('');
     setShowRejectForm(false);
   };
@@ -132,14 +125,14 @@ export const AdminComplaintDetail = () => {
     });
   };
 
-  const handleResolveSubmit = (e) => {
+  const handleResolveSubmit = async (e) => {
     e.preventDefault();
     if (!resNote.trim()) {
       setResError('Mohon isi catatan tindakan penyelesaian.');
       return;
     }
 
-    closeComplaint(complaint.id, resNote, afterPhotos);
+    await closeComplaint(complaint.id, resNote, afterPhotos);
     setResNote('');
     setAfterPhotos([]);
   };

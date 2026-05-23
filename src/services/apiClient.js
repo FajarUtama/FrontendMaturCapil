@@ -14,6 +14,8 @@ export class ApiError extends Error {
     this.status = status;
     this.errors = errors;
     this.body = body;
+    this.needsEmailVerification =
+      body?.needs_email_verification ?? body?.needsEmailVerification ?? false;
   }
 }
 
@@ -148,7 +150,7 @@ export async function toServiceResult(fn) {
         success: false,
         message: err.message,
         errors: err.errors,
-        needsEmailVerification: err.body?.needsEmailVerification ?? err.body?.needs_email_verification,
+        needsEmailVerification: err.needsEmailVerification,
       };
     }
     return {

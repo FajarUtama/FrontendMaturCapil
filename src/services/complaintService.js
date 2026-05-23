@@ -1,9 +1,7 @@
 import { apiRequest, toServiceResult } from './apiClient';
 import { mapComplaint } from './mappers';
+import { photosToUploadBlobs } from '../utils/fileHelpers';
 
-/**
- * @param {import('./types').CreateComplaintPayload} payload
- */
 const buildComplaintFormData = (payload) => {
   const fd = new FormData();
   fd.append('title', payload.title);
@@ -14,10 +12,19 @@ const buildComplaintFormData = (payload) => {
   fd.append('longitude', String(payload.longitude));
   fd.append('address', payload.address);
 
-  (payload.photos || []).forEach((photo, index) => {
-    if (photo instanceof Blob) {
-      fd.append('photos[]', photo, `photo-${index}.jpg`);
-    }
+  const blobs = photosToUploadBlobs(payload.photos || []);
+  blobs.forEach((blob, index) => {
+    fd.append('photos[]', blob, `photo-${index}.jpg`);
+  });
+  return fd;
+};
+
+const buildCloseFormData = (resolutionNote, photos = []) => {
+  const fd = new FormData();
+  fd.append('resolution_note', resolutionNote);
+  const blobs = photosToUploadBlobs(photos);
+  blobs.forEach((blob, index) => {
+    fd.append('evidence_after[]', blob, `evidence-${index}.jpg`);
   });
   return fd;
 };
@@ -25,8 +32,8 @@ const buildComplaintFormData = (payload) => {
 /** @param {Record<string, unknown>} [params] */
 export const listComplaints = (params) =>
   toServiceResult(async () => {
-    const { data } = await apiRequest('/complaints', { params });
-    const items = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+    const { data } = await apiRequest('/complaints', { params: { per_page: 100, ...params } });
+    const items = Array.isArray(data) ? data : data?.items ?? [];
     return { success: true, complaints: items.map(mapComplaint) };
   });
 
@@ -39,19 +46,15 @@ export const getComplaint = (id) =>
 
 /** @param {string} userId */
 export const getUserComplaints = (userId) =>
-  toServiceResult(async () => {
-    const { data } = await apiRequest('/complaints', { params: { user_id: userId } });
-    const items = Array.isArray(data) ? data : data?.items ?? [];
-    return { success: true, complaints: items.map(mapComplaint) };
-  });
+  listComplaints({ user_id: userId });
 
 /**
  * @param {import('./types').CreateComplaintPayload} payload
  */
 export const createComplaint = (payload) =>
   toServiceResult(async () => {
-    const hasFilePhotos = (payload.photos || []).some((p) => p instanceof Blob);
-    if (hasFilePhotos) {
+    const blobs = photosToUploadBlobs(payload.photos || []);
+    if (blobs.length > 0) {
       const { data, message } = await apiRequest('/complaints', {
         method: 'POST',
         formData: buildComplaintFormData(payload),
@@ -68,17 +71,11 @@ export const createComplaint = (payload) =>
         latitude: payload.latitude,
         longitude: payload.longitude,
         address: payload.address,
-        photos: payload.photos,
       },
     });
     return { success: true, complaint: mapComplaint(data), message, ...meta };
   });
 
-/**
- * @param {string} id
- * @param {string} status
- * @param {string} [note]
- */
 export const updateComplaintStatus = (id, status, note) =>
   toServiceResult(async () => {
     const { data } = await apiRequest(`/complaints/${id}/status`, {
@@ -88,33 +85,29 @@ export const updateComplaintStatus = (id, status, note) =>
     return { success: true, complaint: mapComplaint(data) };
   });
 
-/**
- * @param {string} id
- * @param {{ resolutionNote: string, evidenceAfterPhotos?: (string|Blob)[] }} payload
- */
-export const closeComplaint = (id, payload) =>
+export const closeComplaint = (id, resolutionNote, evidenceAfterPhotos = []) =>
   toServiceResult(async () => {
+    const blobs = photosToUploadBlobs(evidenceAfterPhotos);
+    if (blobs.length > 0) {
+      const { data } = await apiRequest(`/complaints/${id}/close`, {
+        method: 'POST',
+        formData: buildCloseFormData(resolutionNote, evidenceAfterPhotos),
+      });
+      return { success: true, complaint: mapComplaint(data) };
+    }
     const { data } = await apiRequest(`/complaints/${id}/close`, {
       method: 'POST',
-      body: {
-        resolution_note: payload.resolutionNote,
-        evidence_after_photos: payload.evidenceAfterPhotos,
-      },
+      body: { resolution_note: resolutionNote },
     });
     return { success: true, complaint: mapComplaint(data) };
   });
 
-/** @param {string} complaintId */
 export const listChatMessages = (complaintId) =>
   toServiceResult(async () => {
     const { data } = await apiRequest(`/complaints/${complaintId}/chats`);
     return { success: true, chats: Array.isArray(data) ? data : data?.items ?? [] };
   });
 
-/**
- * @param {string} complaintId
- * @param {string} message
- */
 export const sendChatMessage = (complaintId, message) =>
   toServiceResult(async () => {
     const { data } = await apiRequest(`/complaints/${complaintId}/chats`, {
@@ -124,7 +117,6 @@ export const sendChatMessage = (complaintId, message) =>
     return { success: true, chat: data };
   });
 
-/** @param {string} complaintId */
 export const listStatusLogs = (complaintId) =>
   toServiceResult(async () => {
     const { data } = await apiRequest(`/complaints/${complaintId}/status-logs`);

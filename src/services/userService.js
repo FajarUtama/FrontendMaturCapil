@@ -4,7 +4,7 @@ import { mapUser } from './mappers';
 /** @param {Record<string, unknown>} [params] */
 export const listUsers = (params) =>
   toServiceResult(async () => {
-    const { data } = await apiRequest('/users', { params });
+    const { data } = await apiRequest('/users', { params: { per_page: 100, ...params } });
     const items = Array.isArray(data) ? data : data?.items ?? [];
     return { success: true, users: items.map(mapUser) };
   });

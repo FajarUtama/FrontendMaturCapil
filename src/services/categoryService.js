@@ -3,7 +3,9 @@ import { mapCategory } from './mappers';
 
 export const listCategories = (params = {}) =>
   toServiceResult(async () => {
-    const { data } = await apiRequest('/categories', { params });
+    const { data } = await apiRequest('/categories', {
+      params: { include_inactive: true, ...params },
+    });
     const items = Array.isArray(data) ? data : data?.items ?? [];
     return { success: true, categories: items.map(mapCategory) };
   });

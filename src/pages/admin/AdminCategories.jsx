@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { Tags, Plus, Trash2, ShieldAlert, CheckCircle2, Pencil, X } from 'lucide-react';
 
 export const AdminCategories = () => {
-  const { categories, addCategory, updateCategory, deleteCategory, hasPermission } = useMockData();
+  const { categories, addCategory, updateCategory, deleteCategory, hasPermission } = useAppData();
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');

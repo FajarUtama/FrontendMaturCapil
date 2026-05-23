@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
-  const { complaints, categories } = useMockData();
+  const { complaints, categories } = useAppData();
   const navigate = useNavigate();
   const [selectedMapDistrict, setSelectedMapDistrict] = useState(null);
 

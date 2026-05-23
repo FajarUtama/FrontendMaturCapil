@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { Search, MapPin, Eye, Calendar, Tag, CheckCircle2, RefreshCw, ClipboardList, Clock } from 'lucide-react';
 
 export const CitizenFeed = () => {
-  const { complaints, activeCategories: categories } = useMockData();
+  const { complaints, activeCategories: categories } = useAppData();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');

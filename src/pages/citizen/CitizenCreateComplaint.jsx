@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMockData } from '../../context/MockDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import { ClipboardList, MapPin, Upload, X, ShieldAlert, CheckCircle2, ArrowRight, Mail } from 'lucide-react';
 
 export const CitizenCreateComplaint = () => {
-  const { currentUser, activeCategories: categories, createComplaint, getUserComplaints } = useMockData();
+  const { currentUser, activeCategories: categories, createComplaint, getUserComplaints } = useAppData();
   const navigate = useNavigate();
 
   // Guard: Redirect to login if not logged in
@@ -90,7 +90,7 @@ export const CitizenCreateComplaint = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
 
@@ -104,7 +104,7 @@ export const CitizenCreateComplaint = () => {
       return;
     }
 
-    const result = createComplaint({
+    const result = await createComplaint({
       title,
       description,
       categoryId,
