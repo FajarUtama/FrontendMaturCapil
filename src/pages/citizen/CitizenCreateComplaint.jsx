@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useMockData } from '../../context/MockDataContext';
-import { ClipboardList, MapPin, Upload, X, ShieldAlert, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ClipboardList, MapPin, Upload, X, ShieldAlert, CheckCircle2, ArrowRight, Mail } from 'lucide-react';
 
 export const CitizenCreateComplaint = () => {
-  const { currentUser, categories, createComplaint } = useMockData();
+  const { currentUser, activeCategories: categories, createComplaint, getUserComplaints } = useMockData();
   const navigate = useNavigate();
 
   // Guard: Redirect to login if not logged in
@@ -44,6 +44,10 @@ export const CitizenCreateComplaint = () => {
   ];
 
   if (!currentUser) return null;
+
+  const myComplaintCount = getUserComplaints(currentUser.id).length;
+  const emailNotVerified = !currentUser.email_verified;
+  const atReportLimit = emailNotVerified && myComplaintCount >= 1;
 
   // Handle Image upload with base64 conversion & validation (max 5MB)
   const handlePhotoUpload = (e) => {
@@ -90,6 +94,11 @@ export const CitizenCreateComplaint = () => {
     e.preventDefault();
     setFormError('');
 
+    if (atReportLimit) {
+      setFormError('Verifikasi email di Profil untuk membuat laporan lagi.');
+      return;
+    }
+
     if (!title || !description || !categoryId || !address) {
       setFormError('Harap lengkapi semua kolom wajib (*)');
       return;
@@ -105,6 +114,11 @@ export const CitizenCreateComplaint = () => {
       address,
       photos
     });
+
+    if (result.needsEmailVerification) {
+      setFormError(result.message);
+      return;
+    }
 
     if (result.success) {
       // Redirect to complaint history page after creation
@@ -126,6 +140,34 @@ export const CitizenCreateComplaint = () => {
         </div>
       </div>
 
+      {emailNotVerified && (
+        <div
+          className={`text-xs px-4 py-3 rounded-xl flex items-start gap-2.5 border ${
+            atReportLimit
+              ? 'bg-rose-50 border-rose-100 text-rose-800'
+              : 'bg-amber-50 border-amber-100 text-amber-900'
+          }`}
+        >
+          <Mail className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">
+              {atReportLimit ? 'Batas laporan tercapai' : 'Email belum diverifikasi'}
+            </p>
+            <p className="mt-0.5 leading-relaxed opacity-90">
+              {atReportLimit
+                ? 'Anda sudah membuat 1 laporan. Verifikasi email di halaman Profil untuk membuat laporan lagi.'
+                : 'Anda dapat membuat 1 laporan dulu. Setelah itu, verifikasi email di Profil untuk laporan tanpa batas.'}
+            </p>
+            <Link
+              to="/maturcapil/profile"
+              className="inline-flex mt-2 text-[10px] font-bold text-brand-600 hover:underline"
+            >
+              Buka halaman Profil →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Error Banner */}
       {formError && (
         <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs px-4 py-3 rounded-xl flex items-center gap-2.5 animate-slide-down">
@@ -135,7 +177,7 @@ export const CitizenCreateComplaint = () => {
       )}
 
       {/* Main Form */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" style={{ opacity: atReportLimit ? 0.6 : 1 }}>
         
         {/* Title */}
         <div className="flex flex-col gap-1">
@@ -288,7 +330,8 @@ export const CitizenCreateComplaint = () => {
         {/* Submit */}
         <button 
           type="submit"
-          className="mt-4 w-full bg-brand-500 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-brand-600 active:scale-98 transition-all shadow-md shadow-brand-500/10 cursor-pointer"
+          disabled={atReportLimit}
+          className="mt-4 w-full bg-brand-500 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-brand-600 active:scale-98 transition-all shadow-md shadow-brand-500/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Kirim Laporan Pengaduan
           <ArrowRight className="w-4 h-4" />

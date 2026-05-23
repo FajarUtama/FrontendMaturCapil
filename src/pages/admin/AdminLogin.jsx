@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMockData } from '../../context/MockDataContext';
-import { Lock, Mail, ShieldAlert, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, ShieldAlert, ArrowRight, ShieldCheck } from 'lucide-react';
+import { PasswordField } from '../../components/auth/PasswordField';
+import { DEMO_ACCOUNTS } from '../../constants/demoAccounts';
 
 export const AdminLogin = () => {
   const { login, currentUser } = useMockData();
@@ -44,13 +46,10 @@ export const AdminLogin = () => {
 
   // Direct login credentials injector for testing
   const handleQuickLogin = (roleType) => {
-    if (roleType === 'admin') {
-      setEmail('admin@maturcapil.id');
-      setPassword('password');
-    } else {
-      setEmail('superadmin@maturcapil.id');
-      setPassword('password');
-    }
+    setError('');
+    const account = roleType === 'admin' ? DEMO_ACCOUNTS.admin : DEMO_ACCOUNTS.superAdmin;
+    setEmail(account.email);
+    setPassword(account.password);
   };
 
   return (
@@ -107,16 +106,11 @@ export const AdminLogin = () => {
 
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-4.5 h-4.5 text-slate-500" />
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                className="w-full bg-slate-900 border border-slate-700/80 focus:border-brand-500 focus:bg-slate-950 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-550 focus:outline-hidden transition-all"
-              />
-            </div>
+            <PasswordField
+              variant="dark"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
 
           <button 
@@ -135,23 +129,30 @@ export const AdminLogin = () => {
           </button>
         </form>
 
-        {/* Demo Credentials Quick Injector */}
+        {/* Demo — isi otomatis email & password */}
         <div className="border-t border-slate-700/50 pt-4 mt-2">
-          <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">💡 Demo Quick Login (Click to fill):</p>
+          <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">
+            Isi otomatis (demo)
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <button
+              type="button"
               onClick={() => handleQuickLogin('admin')}
-              className="py-2 px-3 border border-slate-700 hover:border-slate-500 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-[10px] font-semibold transition-colors"
+              className="py-2.5 px-3 border border-slate-700 hover:border-brand-500/50 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-[10px] font-semibold transition-colors"
             >
               💼 Staf Admin
             </button>
             <button
+              type="button"
               onClick={() => handleQuickLogin('superadmin')}
-              className="py-2 px-3 border border-slate-700 hover:border-slate-500 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-[10px] font-semibold transition-colors"
+              className="py-2.5 px-3 border border-slate-700 hover:border-brand-500/50 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-[10px] font-semibold transition-colors"
             >
               👑 Super Admin
             </button>
           </div>
+          <p className="text-[9px] text-slate-500 text-center mt-2 leading-relaxed">
+            Klik tombol di atas untuk mengisi email & password, lalu tekan Masuk Sistem
+          </p>
         </div>
       </div>
     </div>

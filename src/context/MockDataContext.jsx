@@ -1,23 +1,100 @@
+/**
+ * Provider mock (localStorage). Integrasi BE: panggil modul di `src/services/`
+ * dari ApiDataProvider atau ganti implementasi fungsi di sini.
+ * @see src/services/index.js
+ */
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { DEFAULT_ADMIN_PERMISSIONS, ACCOUNT_STATUS } from '../constants/permissions';
+import { DEMO_PASSWORD, syncDemoUserPasswords, verifyDemoPassword } from '../constants/demoAccounts';
+import {
+  generateOtp,
+  OTP_EXPIRY_MS,
+  OTP_MAX_RESEND,
+  OTP_RESEND_COOLDOWN_MS,
+} from '../constants/emailVerification';
+import { validateNik, validatePassword } from '../utils/validation';
+import { hasPermission as checkPermission, isSuperAdmin, getEffectivePermissions } from '../utils/rbac';
 
 const MockDataContext = createContext();
 
+const normalizeUser = (user) => ({
+  ...user,
+  nik: user.nik || '',
+  status: user.status || ACCOUNT_STATUS.ACTIVE,
+  email_verified: user.email_verified ?? user.role !== 'Masyarakat',
+  permissions:
+    user.permissions ||
+    (user.role === 'Admin' ? [...DEFAULT_ADMIN_PERMISSIONS] : []),
+  deleted_at: user.deleted_at || null,
+  deleted_by: user.deleted_by || null,
+});
+
+const normalizeCategory = (cat) => ({
+  ...cat,
+  description: cat.description || '',
+  is_active: cat.is_active !== false,
+  deleted_at: cat.deleted_at || null,
+  deleted_by: cat.deleted_by || null,
+});
+
 // Mock Categories
 const INITIAL_CATEGORIES = [
-  { id: 'ktp', name: 'Kartu Tanda Penduduk (KTP)', code: 'KTP' },
-  { id: 'kk', name: 'Kartu Keluarga (KK)', code: 'KK' },
-  { id: 'kia', name: 'Kartu Identitas Anak (KIA)', code: 'KIA' },
-  { id: 'akta', name: 'Akta Kelahiran / Kematian', code: 'AKT' },
-  { id: 'pindah', name: 'Surat Pindah (SKPWNI)', code: 'PDH' },
-  { id: 'layanan', name: 'Pelayanan Kantor Capil / Kecamatan', code: 'LYN' }
+  { id: 'ktp', name: 'Kartu Tanda Penduduk (KTP)', code: 'KTP', description: 'Pengaduan terkait KTP-el', is_active: true },
+  { id: 'kk', name: 'Kartu Keluarga (KK)', code: 'KK', description: 'Pengaduan terkait KK', is_active: true },
+  { id: 'kia', name: 'Kartu Identitas Anak (KIA)', code: 'KIA', description: 'Pengaduan terkait KIA', is_active: true },
+  { id: 'akta', name: 'Akta Kelahiran / Kematian', code: 'AKT', description: 'Pengaduan akta kelahiran/kematian', is_active: true },
+  { id: 'pindah', name: 'Surat Pindah (SKPWNI)', code: 'PDH', description: 'Pengaduan surat pindah domisili', is_active: true },
+  { id: 'layanan', name: 'Pelayanan Kantor Capil / Kecamatan', code: 'LYN', description: 'Pelayanan dan sikap petugas', is_active: true },
 ];
 
 // Mock Users
 const INITIAL_USERS = [
-  { id: 'usr-1', name: 'Budi Santoso', email: 'citizen@maturcapil.id', password: 'password', role: 'Masyarakat', created_at: '2026-05-01T08:00:00Z' },
-  { id: 'usr-2', name: 'Siti Aminah', email: 'admin@maturcapil.id', password: 'password', role: 'Admin', created_at: '2026-05-01T08:00:00Z' },
-  { id: 'usr-3', name: 'Hendra Wijaya', email: 'superadmin@maturcapil.id', password: 'password', role: 'Super Admin', created_at: '2026-05-01T08:00:00Z' },
-  { id: 'usr-4', name: 'Amiruddin', email: 'amir@maturcapil.id', password: 'password', role: 'Admin', created_at: '2026-05-10T08:00:00Z' }
+  {
+    id: 'usr-1',
+    name: 'Budi Santoso',
+    email: 'citizen@maturcapil.id',
+    password: DEMO_PASSWORD,
+    role: 'Masyarakat',
+    nik: '3374012345678901',
+    status: ACCOUNT_STATUS.ACTIVE,
+    email_verified: true,
+    created_at: '2026-05-01T08:00:00Z',
+  },
+  {
+    id: 'usr-2',
+    name: 'Siti Aminah',
+    email: 'admin@maturcapil.id',
+    password: DEMO_PASSWORD,
+    role: 'Admin',
+    nik: '3374023456789012',
+    status: ACCOUNT_STATUS.ACTIVE,
+    email_verified: true,
+    permissions: [...DEFAULT_ADMIN_PERMISSIONS],
+    created_at: '2026-05-01T08:00:00Z',
+  },
+  {
+    id: 'usr-3',
+    name: 'Hendra Wijaya',
+    email: 'superadmin@maturcapil.id',
+    password: DEMO_PASSWORD,
+    role: 'Super Admin',
+    nik: '3374034567890123',
+    status: ACCOUNT_STATUS.ACTIVE,
+    email_verified: true,
+    created_at: '2026-05-01T08:00:00Z',
+  },
+  {
+    id: 'usr-4',
+    name: 'Amiruddin',
+    email: 'amir@maturcapil.id',
+    password: DEMO_PASSWORD,
+    role: 'Admin',
+    nik: '3374045678901234',
+    status: ACCOUNT_STATUS.ACTIVE,
+    email_verified: true,
+    permissions: ['dashboard.view', 'complaint.verify', 'complaint.close', 'user.view'],
+    created_at: '2026-05-10T08:00:00Z',
+  },
 ];
 
 // Mock Complaints
@@ -128,16 +205,20 @@ const INITIAL_CHATS = [
 
 // Mock Audit Logs
 const INITIAL_AUDIT_LOGS = [
-  { id: 'audit-1', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'VERIFY_COMPLAINT', table_name: 'complaints', record_id: 'comp-1', detail: 'Verifikasi pengaduan KTP-el Budi Santoso', created_at: '2026-05-15T08:20:00Z' },
-  { id: 'audit-2', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'CLOSE_COMPLAINT', table_name: 'complaints', record_id: 'comp-1', detail: 'Penyelesaian pengaduan KTP-el Budi Santoso', created_at: '2026-05-17T14:20:00Z' },
-  { id: 'audit-3', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'REJECT_COMPLAINT', table_name: 'complaints', record_id: 'comp-4', detail: 'Penolakan pengaduan KIA online karena server maintenance', created_at: '2026-05-19T08:30:00Z' }
+  { id: 'audit-1', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'LOGIN', table_name: 'sessions', record_id: 'usr-2', detail: 'Login admin dari Chrome / 192.168.1.10', ip_address: '192.168.1.10', created_at: '2026-05-15T08:00:00Z' },
+  { id: 'audit-2', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'VERIFY_COMPLAINT', table_name: 'complaints', record_id: 'comp-1', detail: 'Verifikasi pengaduan KTP-el Budi Santoso', ip_address: '192.168.1.10', created_at: '2026-05-15T08:20:00Z' },
+  { id: 'audit-3', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'CLOSE_COMPLAINT', table_name: 'complaints', record_id: 'comp-1', detail: 'Penyelesaian pengaduan KTP-el Budi Santoso', ip_address: '192.168.1.10', created_at: '2026-05-17T14:20:00Z' },
+  { id: 'audit-4', user_id: 'usr-2', user_name: 'Siti Aminah', action: 'REJECT_COMPLAINT', table_name: 'complaints', record_id: 'comp-4', detail: 'Penolakan pengaduan KIA online karena server maintenance', ip_address: '192.168.1.10', created_at: '2026-05-19T08:30:00Z' },
+  { id: 'audit-5', user_id: 'usr-3', user_name: 'Hendra Wijaya', action: 'PERMISSION_CHANGE', table_name: 'admin_permissions', record_id: 'usr-4', detail: 'Mengubah hak akses admin Amiruddin', ip_address: '192.168.1.5', created_at: '2026-05-20T09:00:00Z' },
+  { id: 'audit-6', user_id: 'usr-3', user_name: 'Hendra Wijaya', action: 'RESET_PASSWORD', table_name: 'users', record_id: 'usr-1', detail: 'Reset password warga Budi Santoso (force reset)', ip_address: '192.168.1.5', created_at: '2026-05-21T11:00:00Z' },
 ];
 
 export const MockDataProvider = ({ children }) => {
   // Load state from local storage or set initial mock data
   const [users, setUsers] = useState(() => {
     const data = localStorage.getItem('mc_users');
-    return data ? JSON.parse(data) : INITIAL_USERS;
+    const parsed = data ? JSON.parse(data) : INITIAL_USERS;
+    return syncDemoUserPasswords(parsed.map(normalizeUser));
   });
 
   const [complaints, setComplaints] = useState(() => {
@@ -147,7 +228,8 @@ export const MockDataProvider = ({ children }) => {
 
   const [categories, setCategories] = useState(() => {
     const data = localStorage.getItem('mc_categories');
-    return data ? JSON.parse(data) : INITIAL_CATEGORIES;
+    const parsed = data ? JSON.parse(data) : INITIAL_CATEGORIES;
+    return parsed.map(normalizeCategory);
   });
 
   const [statusLogs, setStatusLogs] = useState(() => {
@@ -173,6 +255,12 @@ export const MockDataProvider = ({ children }) => {
 
   // Toast Notifications list
   const [notifications, setNotifications] = useState([]);
+
+  // Pending registrasi + OTP verifikasi email (mock)
+  const [emailVerifications, setEmailVerifications] = useState(() => {
+    const data = localStorage.getItem('mc_email_verifications');
+    return data ? JSON.parse(data) : {};
+  });
 
   // Sync to local storage when state changes
   useEffect(() => {
@@ -207,6 +295,10 @@ export const MockDataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    localStorage.setItem('mc_email_verifications', JSON.stringify(emailVerifications));
+  }, [emailVerifications]);
+
   // Helper: Trigger Notification Toast
   const triggerNotification = (title, message, type = 'info') => {
     const newNotif = {
@@ -220,7 +312,31 @@ export const MockDataProvider = ({ children }) => {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  // Helper: Clear notification
+  // Helper: append immutable audit log
+  const appendAuditLog = (action, tableName, recordId, detail, ipAddress = '127.0.0.1', actor = currentUser) => {
+    if (!actor) return;
+    const entry = {
+      id: `audit-${Date.now()}`,
+      user_id: actor.id,
+      user_name: actor.name,
+      action,
+      table_name: tableName,
+      record_id: recordId,
+      detail,
+      ip_address: ipAddress,
+      created_at: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [...prev, entry]);
+  };
+
+  const hasPermission = (permissionCode) => checkPermission(currentUser, permissionCode);
+
+  const syncCurrentUser = (updatedUser) => {
+    if (currentUser?.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+    }
+  };
+
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
@@ -233,8 +349,23 @@ export const MockDataProvider = ({ children }) => {
       return { success: false, message: 'Email tidak terdaftar.' };
     }
     
-    if (user.password !== password) {
+    const passwordOk =
+      user.password === password || verifyDemoPassword(user.email, password);
+    if (!passwordOk) {
       return { success: false, message: 'Password salah.' };
+    }
+    if (verifyDemoPassword(user.email, password) && user.password !== password) {
+      setUsers((prev) =>
+        syncDemoUserPasswords(
+          prev.map((u) =>
+            u.id === user.id ? { ...u, password: DEMO_PASSWORD } : u
+          )
+        )
+      );
+    }
+
+    if (user.status === ACCOUNT_STATUS.INACTIVE || user.status === ACCOUNT_STATUS.SUSPENDED) {
+      return { success: false, message: 'Akun dinonaktifkan. Hubungi administrator.' };
     }
 
     // Role verification based on portalType
@@ -249,34 +380,223 @@ export const MockDataProvider = ({ children }) => {
     }
 
     setCurrentUser(user);
+    if (portalType === 'admin') {
+      appendAuditLog('LOGIN', 'sessions', user.id, 'Login admin dari browser simulasi', '127.0.0.1', user);
+    }
     triggerNotification('Login Berhasil', `Selamat datang kembali, ${user.name}!`, 'success');
     return { success: true, user };
   };
 
-  // 2. Auth: Register
-  const register = (name, email, password) => {
-    const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-    if (exists) {
+  const createEmailOtpEntry = (email, pendingUser) => {
+    const otp = generateOtp();
+    const entry = {
+      otp,
+      expiresAt: Date.now() + OTP_EXPIRY_MS,
+      resendCount: 0,
+      lastResendAt: Date.now(),
+      pendingUser,
+      verifiedAt: null,
+    };
+    setEmailVerifications((prev) => ({ ...prev, [email.toLowerCase()]: entry }));
+    return otp;
+  };
+
+  // 2a. Registrasi warga — langkah 1: validasi & kirim OTP
+  const registerCitizenStart = ({ name, nik, email, password, passwordConfirm }) => {
+    const trimmedEmail = email?.trim().toLowerCase();
+    if (!name?.trim() || !trimmedEmail || !password) {
+      return { success: false, message: 'Harap lengkapi semua kolom wajib.' };
+    }
+    const nikError = validateNik(nik);
+    if (nikError) return { success: false, message: nikError };
+    const pwdError = validatePassword(password);
+    if (pwdError) return { success: false, message: pwdError };
+    if (password !== passwordConfirm) {
+      return { success: false, message: 'Konfirmasi password tidak cocok.' };
+    }
+    if (users.some((u) => u.email.toLowerCase() === trimmedEmail)) {
       return { success: false, message: 'Email sudah terdaftar.' };
     }
+    if (users.some((u) => u.nik === nik)) {
+      return { success: false, message: 'NIK sudah digunakan. Tidak dapat mendaftar.' };
+    }
 
-    const newUser = {
-      id: `usr-${users.length + 1}`,
-      name,
-      email,
+    const pendingUser = {
+      name: name.trim(),
+      nik,
+      email: trimmedEmail,
       password,
       role: 'Masyarakat',
-      created_at: new Date().toISOString()
     };
+    const demoOtp = createEmailOtpEntry(trimmedEmail, pendingUser);
+    triggerNotification('OTP Terkirim', `Kode verifikasi dikirim ke ${trimmedEmail} (simulasi).`, 'info');
+    return {
+      success: true,
+      email: trimmedEmail,
+      demoOtp,
+      message: 'Kode OTP telah dikirim ke email Anda. Berlaku 5 menit.',
+    };
+  };
 
-    setUsers(prev => [...prev, newUser]);
+  // 2b. Kirim ulang OTP registrasi
+  const resendRegistrationOtp = (email) => {
+    const key = email?.toLowerCase();
+    const entry = emailVerifications[key];
+    if (!entry?.pendingUser) {
+      return { success: false, message: 'Sesi registrasi tidak ditemukan. Ulangi dari awal.' };
+    }
+    if (entry.resendCount >= OTP_MAX_RESEND) {
+      return { success: false, message: 'Batas kirim ulang OTP (3x) telah habis.' };
+    }
+    const elapsed = Date.now() - entry.lastResendAt;
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+      const waitSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000);
+      return { success: false, message: `Tunggu ${waitSec} detik sebelum kirim ulang OTP.` };
+    }
+    const otp = generateOtp();
+    setEmailVerifications((prev) => ({
+      ...prev,
+      [key]: {
+        ...entry,
+        otp,
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        resendCount: entry.resendCount + 1,
+        lastResendAt: Date.now(),
+      },
+    }));
+    triggerNotification('OTP Dikirim Ulang', 'Kode baru telah dikirim (simulasi).', 'info');
+    return { success: true, demoOtp: otp, message: 'OTP baru telah dikirim.' };
+  };
+
+  // 2c. Registrasi warga — langkah 2: verifikasi OTP & buat akun
+  const registerCitizenVerify = (email, otpCode) => {
+    const key = email?.toLowerCase();
+    const entry = emailVerifications[key];
+    if (!entry?.pendingUser) {
+      return { success: false, message: 'Sesi registrasi tidak ditemukan.' };
+    }
+    if (Date.now() > entry.expiresAt) {
+      return { success: false, message: 'OTP kedaluwarsa. Silakan kirim ulang atau daftar lagi.' };
+    }
+    if (entry.otp !== String(otpCode).trim()) {
+      return { success: false, message: 'Kode OTP salah.' };
+    }
+    if (users.some((u) => u.email.toLowerCase() === key)) {
+      return { success: false, message: 'Email sudah terdaftar.' };
+    }
+    if (users.some((u) => u.nik === entry.pendingUser.nik)) {
+      return { success: false, message: 'NIK sudah digunakan.' };
+    }
+
+    const newUser = normalizeUser({
+      id: `usr-${Date.now()}`,
+      name: entry.pendingUser.name,
+      email: key,
+      password: entry.pendingUser.password,
+      nik: entry.pendingUser.nik,
+      role: 'Masyarakat',
+      status: ACCOUNT_STATUS.ACTIVE,
+      email_verified: true,
+      email_verified_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    });
+
+    setUsers((prev) => [...prev, newUser]);
     setCurrentUser(newUser);
-    triggerNotification('Registrasi Berhasil', 'Akun Anda berhasil dibuat. Silakan ajukan pengaduan.', 'success');
+    setEmailVerifications((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    triggerNotification('Email Terverifikasi', 'Akun berhasil dibuat. Anda dapat membuat laporan tanpa batas.', 'success');
     return { success: true, user: newUser };
   };
 
+  // Verifikasi email untuk user yang sudah login tapi belum verifikasi
+  const verifyCurrentUserEmail = (otpCode) => {
+    if (!currentUser) return { success: false, message: 'Harus login terlebih dahulu.' };
+    const key = currentUser.email.toLowerCase();
+    const entry = emailVerifications[key];
+    if (!entry) {
+      return { success: false, message: 'Tidak ada OTP aktif. Minta kode baru dari halaman profil.' };
+    }
+    if (Date.now() > entry.expiresAt) {
+      return { success: false, message: 'OTP kedaluwarsa.' };
+    }
+    if (entry.otp !== String(otpCode).trim()) {
+      return { success: false, message: 'Kode OTP salah.' };
+    }
+    const updated = normalizeUser({
+      ...currentUser,
+      email_verified: true,
+      email_verified_at: new Date().toISOString(),
+    });
+    setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updated : u)));
+    setCurrentUser(updated);
+    setEmailVerifications((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    triggerNotification('Email Terverifikasi', 'Anda dapat membuat laporan tanpa batas.', 'success');
+    return { success: true };
+  };
+
+  const sendEmailVerificationOtp = () => {
+    if (!currentUser) return { success: false, message: 'Harus login.' };
+    if (currentUser.email_verified) {
+      return { success: false, message: 'Email sudah terverifikasi.' };
+    }
+    const demoOtp = createEmailOtpEntry(currentUser.email.toLowerCase(), null);
+    triggerNotification('OTP Terkirim', `Kode verifikasi dikirim ke ${currentUser.email} (simulasi).`, 'info');
+    return { success: true, demoOtp, message: 'OTP dikirim ke email Anda.' };
+  };
+
+  const resendEmailVerificationOtp = () => {
+    if (!currentUser) return { success: false, message: 'Harus login.' };
+    const key = currentUser.email.toLowerCase();
+    const entry = emailVerifications[key];
+    if (!entry) {
+      return { success: false, message: 'Tidak ada OTP aktif. Minta kode baru terlebih dahulu.' };
+    }
+    if (entry.resendCount >= OTP_MAX_RESEND) {
+      return { success: false, message: 'Batas kirim ulang OTP (3x) telah habis.' };
+    }
+    const elapsed = Date.now() - entry.lastResendAt;
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+      const waitSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000);
+      return { success: false, message: `Tunggu ${waitSec} detik sebelum kirim ulang OTP.` };
+    }
+    const otp = generateOtp();
+    setEmailVerifications((prev) => ({
+      ...prev,
+      [key]: {
+        ...entry,
+        otp,
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        resendCount: entry.resendCount + 1,
+        lastResendAt: Date.now(),
+      },
+    }));
+    triggerNotification('OTP Dikirim Ulang', 'Kode baru telah dikirim (simulasi).', 'info');
+    return { success: true, demoOtp: otp, message: 'OTP baru telah dikirim.' };
+  };
+
+  /** @deprecated gunakan registerCitizenStart + registerCitizenVerify */
+  const register = (name, email, password) =>
+    registerCitizenStart({
+      name,
+      nik: '',
+      email,
+      password,
+      passwordConfirm: password,
+    });
+
   // 3. Auth: Logout
   const logout = () => {
+    if (currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin')) {
+      appendAuditLog('LOGOUT', 'sessions', currentUser.id, 'Logout admin');
+    }
     setCurrentUser(null);
     triggerNotification('Log Out', 'Anda telah keluar dari sistem.', 'info');
   };
@@ -284,6 +604,18 @@ export const MockDataProvider = ({ children }) => {
   // 4. Create Complaint
   const createComplaint = (data) => {
     if (!currentUser) return { success: false, message: 'Harus login terlebih dahulu.' };
+
+    if (!currentUser.email_verified) {
+      const userReportCount = complaints.filter((c) => c.user_id === currentUser.id).length;
+      if (userReportCount >= 1) {
+        return {
+          success: false,
+          needsEmailVerification: true,
+          message:
+            'Anda hanya dapat membuat 1 laporan sebelum email diverifikasi. Verifikasi email untuk melanjutkan.',
+        };
+      }
+    }
 
     const ticketNumber = `TKT-${new Date().getFullYear()}-${String(complaints.length + 1).padStart(4, '0')}`;
     const newComplaint = {
@@ -467,52 +799,173 @@ export const MockDataProvider = ({ children }) => {
   };
 
   // 8. Super Admin: Manage Categories
-  const addCategory = (name, code) => {
-    if (!currentUser || currentUser.role !== 'Super Admin') return { success: false };
+  const addCategory = (name, code, description = '') => {
+    if (!checkPermission(currentUser, 'category.manage')) return { success: false, message: 'Unauthorized' };
     const id = name.toLowerCase().replace(/\s+/g, '-');
-    const newCat = { id, name, code: code.toUpperCase() };
-    setCategories(prev => [...prev, newCat]);
+    if (categories.some((c) => c.id === id || c.code === code.toUpperCase())) {
+      return { success: false, message: 'Kategori dengan kode/id serupa sudah ada.' };
+    }
+    const newCat = normalizeCategory({ id, name, code: code.toUpperCase(), description });
+    setCategories((prev) => [...prev, newCat]);
+    appendAuditLog('CREATE_CATEGORY', 'categories', id, `Menambah kategori ${name}`);
+    return { success: true };
+  };
+
+  const updateCategory = (id, data) => {
+    if (!checkPermission(currentUser, 'category.manage')) return { success: false, message: 'Unauthorized' };
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? normalizeCategory({ ...c, ...data, code: data.code?.toUpperCase() || c.code }) : c))
+    );
+    appendAuditLog('UPDATE_CATEGORY', 'categories', id, `Memperbarui kategori ${data.name || id}`);
     return { success: true };
   };
 
   const deleteCategory = (id) => {
-    if (!currentUser || currentUser.role !== 'Super Admin') return { success: false };
-    setCategories(prev => prev.filter(c => c.id !== id));
+    if (!checkPermission(currentUser, 'category.manage')) return { success: false, message: 'Unauthorized' };
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, is_active: false, deleted_at: new Date().toISOString(), deleted_by: currentUser?.id }
+          : c
+      )
+    );
+    appendAuditLog('DELETE_CATEGORY', 'categories', id, `Soft delete kategori ${id}`);
     return { success: true };
   };
 
-  // 9. Super Admin: Manage Admins
-  const createAdmin = (name, email, password) => {
-    if (!currentUser || currentUser.role !== 'Super Admin') return { success: false, message: 'Unauthorized' };
-    const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-    if (exists) return { success: false, message: 'Email sudah terdaftar.' };
+  // 9. User Management
+  const createCitizen = (data) => {
+    if (!checkPermission(currentUser, 'user.create')) return { success: false, message: 'Unauthorized' };
+    const nikError = validateNik(data.nik);
+    if (nikError) return { success: false, message: nikError };
+    const pwdError = validatePassword(data.password);
+    if (pwdError) return { success: false, message: pwdError };
+    if (users.some((u) => u.email.toLowerCase() === data.email.toLowerCase())) {
+      return { success: false, message: 'Email sudah terdaftar.' };
+    }
+    if (users.some((u) => u.nik === data.nik)) {
+      return { success: false, message: 'NIK sudah digunakan.' };
+    }
+    const newUser = normalizeUser({
+      id: `usr-${Date.now()}`,
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      nik: data.nik,
+      role: 'Masyarakat',
+      status: ACCOUNT_STATUS.ACTIVE,
+      email_verified: false,
+      created_at: new Date().toISOString(),
+    });
+    setUsers((prev) => [...prev, newUser]);
+    appendAuditLog('CREATE_USER', 'users', newUser.id, `Menambah warga ${newUser.name}`);
+    return { success: true, user: newUser };
+  };
 
-    const newAdmin = {
-      id: `usr-${users.length + 1}`,
+  const createAdmin = (name, email, password, permissions = [...DEFAULT_ADMIN_PERMISSIONS], nik = '') => {
+    if (!checkPermission(currentUser, 'user.create')) return { success: false, message: 'Unauthorized' };
+    const pwdError = validatePassword(password);
+    if (pwdError) return { success: false, message: pwdError };
+    const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (exists) return { success: false, message: 'Email sudah terdaftar.' };
+    if (nik) {
+      const nikError = validateNik(nik);
+      if (nikError) return { success: false, message: nikError };
+      if (users.some((u) => u.nik === nik)) return { success: false, message: 'NIK sudah digunakan.' };
+    }
+    const newAdmin = normalizeUser({
+      id: `usr-${Date.now()}`,
       name,
       email,
       password,
+      nik: nik || '',
       role: 'Admin',
-      created_at: new Date().toISOString()
-    };
+      status: ACCOUNT_STATUS.ACTIVE,
+      email_verified: true,
+      permissions,
+      created_at: new Date().toISOString(),
+    });
+    setUsers((prev) => [...prev, newAdmin]);
+    appendAuditLog('CREATE_USER', 'users', newAdmin.id, `Menambah admin ${name}`);
+    return { success: true, user: newAdmin };
+  };
 
-    setUsers(prev => [...prev, newAdmin]);
+  const updateUser = (userId, data) => {
+    if (!checkPermission(currentUser, 'user.update')) return { success: false, message: 'Unauthorized' };
+    const target = users.find((u) => u.id === userId);
+    if (!target) return { success: false, message: 'User tidak ditemukan.' };
+    if (data.nik && data.nik !== target.nik) {
+      const nikError = validateNik(data.nik);
+      if (nikError) return { success: false, message: nikError };
+      if (users.some((u) => u.nik === data.nik && u.id !== userId)) {
+        return { success: false, message: 'NIK sudah digunakan.' };
+      }
+    }
+    const updated = normalizeUser({ ...target, ...data });
+    setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    syncCurrentUser(updated);
+    appendAuditLog('UPDATE_USER', 'users', userId, `Memperbarui data user ${updated.name}`);
+    return { success: true, user: updated };
+  };
+
+  const deactivateUser = (userId) => {
+    if (!checkPermission(currentUser, 'user.delete')) return { success: false, message: 'Unauthorized' };
+    if (userId === currentUser?.id) return { success: false, message: 'Tidak dapat menonaktifkan akun sendiri.' };
+    const target = users.find((u) => u.id === userId);
+    if (!target) return { success: false, message: 'User tidak ditemukan.' };
+    if (target.role === 'Super Admin') return { success: false, message: 'Super Admin tidak dapat dinonaktifkan.' };
+    const updated = normalizeUser({
+      ...target,
+      status: ACCOUNT_STATUS.INACTIVE,
+      deleted_at: new Date().toISOString(),
+      deleted_by: currentUser.id,
+    });
+    setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    appendAuditLog('DEACTIVATE_USER', 'users', userId, `Menonaktifkan user ${target.name}`);
     return { success: true };
   };
 
-  const deleteAdmin = (adminId) => {
-    if (!currentUser || currentUser.role !== 'Super Admin') return { success: false };
-    // Prevent self delete
-    if (adminId === currentUser.id) return { success: false, message: 'Tidak dapat menghapus akun Anda sendiri.' };
-    setUsers(prev => prev.filter(u => u.id !== adminId));
+  const resetUserPassword = (userId, newPassword, forceReset = false) => {
+    if (!checkPermission(currentUser, 'user.update')) return { success: false, message: 'Unauthorized' };
+    const pwdError = validatePassword(newPassword);
+    if (pwdError) return { success: false, message: pwdError };
+    const target = users.find((u) => u.id === userId);
+    if (!target) return { success: false, message: 'User tidak ditemukan.' };
+    const updated = { ...target, password: newPassword };
+    setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    appendAuditLog(
+      'RESET_PASSWORD',
+      'users',
+      userId,
+      `${forceReset ? 'Force reset' : 'Reset'} password ${target.name} — notifikasi email terkirim (simulasi)`
+    );
+    triggerNotification('Reset Password', `Password ${target.name} berhasil direset. Email notifikasi terkirim.`, 'info');
     return { success: true };
   };
+
+  const updateAdminPermissions = (adminId, permissions) => {
+    if (!isSuperAdmin(currentUser)) return { success: false, message: 'Hanya Super Admin.' };
+    const target = users.find((u) => u.id === adminId);
+    if (!target || target.role !== 'Admin') return { success: false, message: 'Target bukan admin.' };
+    const updated = normalizeUser({ ...target, permissions });
+    setUsers((prev) => prev.map((u) => (u.id === adminId ? updated : u)));
+    syncCurrentUser(updated);
+    appendAuditLog('PERMISSION_CHANGE', 'admin_permissions', adminId, `Mengubah hak akses admin ${target.name}`);
+    return { success: true };
+  };
+
+  const deleteAdmin = (adminId) => deactivateUser(adminId);
+
+  const getUserComplaints = (userId) => complaints.filter((c) => c.user_id === userId);
+
+  const activeCategories = categories.filter((c) => c.is_active && !c.deleted_at);
 
   return (
     <MockDataContext.Provider value={{
       users,
       complaints,
       categories,
+      activeCategories,
       statusLogs,
       chats,
       auditLogs,
@@ -520,6 +973,13 @@ export const MockDataProvider = ({ children }) => {
       notifications,
       login,
       register,
+      registerCitizenStart,
+      registerCitizenVerify,
+      resendRegistrationOtp,
+      sendEmailVerificationOtp,
+      resendEmailVerificationOtp,
+      verifyCurrentUserEmail,
+      getRegistrationOtpInfo: (email) => emailVerifications[email?.toLowerCase()] || null,
       logout,
       createComplaint,
       updateComplaintStatus,
@@ -528,9 +988,19 @@ export const MockDataProvider = ({ children }) => {
       triggerNotification,
       removeNotification,
       addCategory,
+      updateCategory,
       deleteCategory,
       createAdmin,
-      deleteAdmin
+      createCitizen,
+      updateUser,
+      deactivateUser,
+      resetUserPassword,
+      updateAdminPermissions,
+      deleteAdmin,
+      getUserComplaints,
+      hasPermission,
+      isSuperAdmin: () => isSuperAdmin(currentUser),
+      getEffectivePermissions: () => getEffectivePermissions(currentUser),
     }}>
       {children}
     </MockDataContext.Provider>

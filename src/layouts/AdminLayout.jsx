@@ -25,7 +25,7 @@ const navLinkClass = ({ isActive }) =>
   }`;
 
 export const AdminLayout = () => {
-  const { currentUser, logout, notifications } = useMockData();
+  const { currentUser, logout, notifications, hasPermission } = useMockData();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -93,30 +93,36 @@ export const AdminLayout = () => {
         {showSidebarLabels && <span>Kelola Pengaduan</span>}
       </NavLink>
 
-      {currentUser.role === 'Super Admin' && (
+      {(hasPermission('user.view') || hasPermission('category.manage') || hasPermission('auditlog.view')) && (
         <>
           <div
             className={`mt-4 mb-1.5 px-3 text-[10px] uppercase font-bold text-slate-600 tracking-widest ${
               !showSidebarLabels && 'text-center'
             }`}
           >
-            {showSidebarLabels ? 'Super Admin' : '•'}
+            {showSidebarLabels ? 'Manajemen Sistem' : '•'}
           </div>
 
-          <NavLink to="/admin/users" className={navLinkClass} onClick={() => setMobileSidebarOpen(false)}>
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {showSidebarLabels && <span>Kelola Pengguna</span>}
-          </NavLink>
+          {hasPermission('user.view') && (
+            <NavLink to="/admin/users" className={navLinkClass} onClick={() => setMobileSidebarOpen(false)}>
+              <Users className="w-5 h-5 flex-shrink-0" />
+              {showSidebarLabels && <span>Manajemen User</span>}
+            </NavLink>
+          )}
 
-          <NavLink to="/admin/categories" className={navLinkClass} onClick={() => setMobileSidebarOpen(false)}>
-            <Tags className="w-5 h-5 flex-shrink-0" />
-            {showSidebarLabels && <span>Kategori Layanan</span>}
-          </NavLink>
+          {hasPermission('category.manage') && (
+            <NavLink to="/admin/categories" className={navLinkClass} onClick={() => setMobileSidebarOpen(false)}>
+              <Tags className="w-5 h-5 flex-shrink-0" />
+              {showSidebarLabels && <span>Kategori Layanan</span>}
+            </NavLink>
+          )}
 
-          <NavLink to="/admin/audit-logs" className={navLinkClass} onClick={() => setMobileSidebarOpen(false)}>
-            <History className="w-5 h-5 flex-shrink-0" />
-            {showSidebarLabels && <span>Audit Log</span>}
-          </NavLink>
+          {hasPermission('auditlog.view') && (
+            <NavLink to="/admin/audit-logs" className={navLinkClass} onClick={() => setMobileSidebarOpen(false)}>
+              <History className="w-5 h-5 flex-shrink-0" />
+              {showSidebarLabels && <span>Audit & Log</span>}
+            </NavLink>
+          )}
         </>
       )}
     </>

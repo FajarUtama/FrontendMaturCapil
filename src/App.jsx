@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { MockDataProvider } from './context/MockDataContext';
+import { AppDataProvider } from './context/AppDataContext';
 
 // Layouts
 import { CitizenLayout } from './layouts/CitizenLayout';
@@ -28,7 +28,7 @@ import { AdminAuditLogs } from './pages/admin/AdminAuditLogs';
 
 function App() {
   return (
-    <MockDataProvider>
+    <AppDataProvider>
       <Router>
         <Routes>
           {/* Root switcher screen */}
@@ -62,7 +62,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
-    </MockDataProvider>
+    </AppDataProvider>
   );
 }
 

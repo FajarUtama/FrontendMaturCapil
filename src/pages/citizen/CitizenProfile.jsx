@@ -1,37 +1,113 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMockData } from '../../context/MockDataContext';
-import { User, LogOut, Phone, ShieldCheck, MapPin, ExternalLink, BookOpen, AlertCircle } from 'lucide-react';
+import {
+  User,
+  LogOut,
+  Phone,
+  ShieldCheck,
+  MapPin,
+  ExternalLink,
+  BookOpen,
+  AlertCircle,
+  Mail,
+  RefreshCw,
+  CheckCircle2,
+  ShieldAlert,
+} from 'lucide-react';
+import { OTP_LENGTH, OTP_RESEND_COOLDOWN_MS } from '../../constants/emailVerification';
 
 export const CitizenProfile = () => {
-  const { currentUser, logout, complaints } = useMockData();
+  const {
+    currentUser,
+    logout,
+    complaints,
+    sendEmailVerificationOtp,
+    resendEmailVerificationOtp,
+    verifyCurrentUserEmail,
+  } = useMockData();
   const navigate = useNavigate();
 
-  // Redirect to login if not logged in
-  React.useEffect(() => {
+  const [otpStep, setOtpStep] = useState('idle');
+  const [otp, setOtp] = useState('');
+  const [demoOtpHint, setDemoOtpHint] = useState('');
+  const [verifyError, setVerifyError] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
     if (!currentUser) {
       navigate('/maturcapil/login');
     }
   }, [currentUser, navigate]);
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
   if (!currentUser) return null;
 
-  // Filter complaints
-  const userComplaints = complaints.filter(c => c.user_id === currentUser.id);
+  const userComplaints = complaints.filter((c) => c.user_id === currentUser.id);
   const total = userComplaints.length;
-  const selesai = userComplaints.filter(c => c.status === 'Selesai').length;
-  const proses = userComplaints.filter(c => c.status === 'Diproses').length;
-  const pending = userComplaints.filter(c => c.status === 'Menunggu Verifikasi').length;
+  const selesai = userComplaints.filter((c) => c.status === 'Selesai').length;
+  const proses = userComplaints.filter((c) => c.status === 'Diproses').length;
+  const pending = userComplaints.filter((c) => c.status === 'Menunggu Verifikasi').length;
+  const emailVerified = currentUser.email_verified;
 
   const handleLogout = () => {
     logout();
     navigate('/maturcapil');
   };
 
+  const handleSendOtp = () => {
+    setVerifyError('');
+    const result = sendEmailVerificationOtp();
+    if (result.success) {
+      setDemoOtpHint(result.demoOtp || '');
+      setOtpStep('otp');
+      setOtp('');
+      setResendCooldown(Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000));
+    } else {
+      setVerifyError(result.message);
+    }
+  };
+
+  const handleResendOtp = () => {
+    setVerifyError('');
+    const result = resendEmailVerificationOtp();
+    if (result.success) {
+      setDemoOtpHint(result.demoOtp || '');
+      setResendCooldown(Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000));
+    } else {
+      setVerifyError(result.message);
+    }
+  };
+
+  const handleVerifyOtp = (e) => {
+    e.preventDefault();
+    setVerifyError('');
+    if (otp.length !== OTP_LENGTH) {
+      setVerifyError(`Masukkan kode OTP ${OTP_LENGTH} digit.`);
+      return;
+    }
+    setVerifyLoading(true);
+    setTimeout(() => {
+      const result = verifyCurrentUserEmail(otp);
+      setVerifyLoading(false);
+      if (result.success) {
+        setOtpStep('idle');
+        setOtp('');
+        setDemoOtpHint('');
+      } else {
+        setVerifyError(result.message);
+      }
+    }, 400);
+  };
+
   return (
     <div className="p-4 flex flex-col gap-5 animate-fade-in">
-      
-      {/* Header */}
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
         <User className="w-5 h-5 text-brand-500" />
         <div>
@@ -40,24 +116,110 @@ export const CitizenProfile = () => {
         </div>
       </div>
 
-      {/* User Card */}
       <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-xs flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-brand-500 text-white font-extrabold text-2xl flex items-center justify-center border-4 border-brand-50 shadow-inner">
           {currentUser.name.charAt(0).toUpperCase()}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="font-extrabold text-sm text-slate-800">{currentUser.name}</h3>
           <p className="text-xs text-slate-400 font-medium truncate">{currentUser.email}</p>
-          <span className="inline-flex mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-            Warga Kota Semarang
-          </span>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+              Warga Kota Semarang
+            </span>
+            {emailVerified ? (
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <CheckCircle2 className="w-3 h-3" /> Email terverifikasi
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-100">
+                <Mail className="w-3 h-3" /> Email belum diverifikasi
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Summary Grid Stats */}
+      {!emailVerified && (
+        <div className="bg-white border border-amber-200/80 rounded-2xl p-4 shadow-xs flex flex-col gap-3">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-xs text-slate-800">Verifikasi Email</h4>
+              <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
+                Tanpa verifikasi, Anda hanya dapat membuat <strong>1 laporan</strong>. Setelah verifikasi, laporan
+                tanpa batas.
+              </p>
+            </div>
+          </div>
+
+          {verifyError && (
+            <div className="text-xs px-3 py-2 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              {verifyError}
+            </div>
+          )}
+
+          {otpStep === 'idle' && (
+            <button
+              type="button"
+              onClick={handleSendOtp}
+              className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs py-2.5 rounded-xl transition-colors"
+            >
+              Kirim Kode OTP ke Email
+            </button>
+          )}
+
+          {otpStep === 'otp' && (
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3">
+              <p className="text-[10px] text-slate-500 text-center">
+                Kode dikirim ke <span className="font-semibold">{currentUser.email}</span>
+              </p>
+
+              {demoOtpHint && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
+                  <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide">Demo OTP</p>
+                  <p className="text-lg font-mono font-black text-amber-900 tracking-[0.3em]">{demoOtpHint}</p>
+                </div>
+              )}
+
+              <input
+                type="text"
+                inputMode="numeric"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH))}
+                placeholder="000000"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-brand-500 rounded-xl px-4 py-2.5 text-center text-lg font-mono tracking-[0.4em] text-slate-700 focus:outline-hidden"
+                maxLength={OTP_LENGTH}
+              />
+
+              <button
+                type="submit"
+                disabled={verifyLoading}
+                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs py-2.5 rounded-xl disabled:opacity-50"
+              >
+                {verifyLoading ? 'Memverifikasi...' : 'Verifikasi Email'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0}
+                className="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-600 py-1 disabled:opacity-40"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : 'Kirim ulang OTP'}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
-        <h4 className="font-extrabold text-xs text-slate-700 mb-3 uppercase tracking-wider text-[10px]">Statistik Pengaduan Anda</h4>
-        
+        <h4 className="font-extrabold text-xs text-slate-700 mb-3 uppercase tracking-wider text-[10px]">
+          Statistik Pengaduan Anda
+        </h4>
+
         <div className="grid grid-cols-4 gap-2">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
             <h5 className="font-extrabold text-sm text-slate-800">{total}</h5>
@@ -78,15 +240,14 @@ export const CitizenProfile = () => {
         </div>
       </div>
 
-      {/* Administrative Support list */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col">
         <div className="bg-slate-50 border-b border-slate-100 px-4 py-2.5">
           <h4 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider">Kontak & Layanan Darurat</h4>
         </div>
-        
+
         <div className="flex flex-col text-xs text-slate-600">
-          <a 
-            href="tel:112" 
+          <a
+            href="tel:112"
             className="flex items-center justify-between p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors"
           >
             <div className="flex items-center gap-3">
@@ -99,9 +260,9 @@ export const CitizenProfile = () => {
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
           </a>
 
-          <a 
-            href="https://maps.google.com/?q=Dispendukcapil+Kota+Semarang" 
-            target="_blank" 
+          <a
+            href="https://maps.google.com/?q=Dispendukcapil+Kota+Semarang"
+            target="_blank"
             rel="noreferrer"
             className="flex items-center justify-between p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors"
           >
@@ -115,9 +276,13 @@ export const CitizenProfile = () => {
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
           </a>
 
-          <button 
+          <button
             type="button"
-            onClick={() => alert('Sistem LaporCapil mendukung file gambar JPG/PNG (maks 5MB) dan secara otomatis mengompresnya saat pengiriman untuk kecepatan loading.')}
+            onClick={() =>
+              alert(
+                'Sistem LaporCapil mendukung file gambar JPG/PNG (maks 5MB) dan secara otomatis mengompresnya saat pengiriman untuk kecepatan loading.'
+              )
+            }
             className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
@@ -132,7 +297,6 @@ export const CitizenProfile = () => {
         </div>
       </div>
 
-      {/* Action Button */}
       <button
         onClick={handleLogout}
         className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
