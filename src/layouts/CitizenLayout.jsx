@@ -121,7 +121,7 @@ export const CitizenLayout = () => {
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-100 py-2.5 px-6 flex justify-around items-center z-20 shadow-lg">
+        <nav className="sticky bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-100 py-2.5 px-6 flex justify-around items-center z-20 shadow-lg flex-shrink-0">
           <NavLink 
             to="/maturcapil" 
             end
