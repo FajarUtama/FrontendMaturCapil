@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppData } from '../../context/AppDataContext';
+import { ComplaintMapView } from '../../components/map/ComplaintMapView';
 import { CHAT_POLL_INTERVAL_MS } from '../../config/env';
 import {
   ArrowLeft,
@@ -211,13 +212,18 @@ export const AdminComplaintDetail = () => {
             </div>
 
             {/* Address */}
-            <div className="flex items-start gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-150/60">
-              <MapPin className="w-4.5 h-4.5 text-brand-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <span className="font-bold block text-[10px] uppercase text-slate-450 tracking-wider">Lokasi Kejadian</span>
-                <p className="mt-0.5 leading-normal">{complaint.address}</p>
-                <span className="text-[9.5px] text-slate-400 font-semibold block mt-1">Koord: {complaint.latitude.toFixed(4)}, {complaint.longitude.toFixed(4)}</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-150/60">
+                <MapPin className="w-4.5 h-4.5 text-brand-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-bold block text-[10px] uppercase text-slate-450 tracking-wider">Lokasi Kejadian</span>
+                  <p className="mt-0.5 leading-normal">{complaint.address}</p>
+                  <span className="text-[9.5px] text-slate-400 font-semibold block mt-1">
+                    Koord: {complaint.latitude.toFixed(4)}, {complaint.longitude.toFixed(4)}
+                  </span>
+                </div>
               </div>
+              <ComplaintMapView latitude={complaint.latitude} longitude={complaint.longitude} />
             </div>
 
             {/* Description */}

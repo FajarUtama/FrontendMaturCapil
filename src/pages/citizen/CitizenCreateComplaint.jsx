@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppData } from '../../context/AppDataContext';
-import { ClipboardList, MapPin, Upload, X, ShieldAlert, CheckCircle2, ArrowRight, Mail } from 'lucide-react';
+import { ClipboardList, MapPin, Upload, X, ShieldAlert, ArrowRight, Mail } from 'lucide-react';
+import { LocationPickerMap, SEMARANG_CENTER } from '../../components/map/LocationPickerMap';
+import { isInSemarangBounds } from '../../constants/semarangMap';
 
 export const CitizenCreateComplaint = () => {
   const { currentUser, activeCategories: categories, createComplaint, getUserComplaints } = useAppData();
@@ -25,23 +27,8 @@ export const CitizenCreateComplaint = () => {
   const [formError, setFormError] = useState('');
   
   // Custom Map Coordinate Selection States
-  const [latitude, setLatitude] = useState(-6.9822);
-  const [longitude, setLongitude] = useState(110.4091);
-  const [selectedDistrict, setSelectedDistrict] = useState('Semarang Tengah');
-
-  // Districts in Semarang for simulated pin
-  const SEMARANG_DISTRICTS = [
-    { name: 'Semarang Tengah', lat: -6.9822, lng: 110.4091 },
-    { name: 'Semarang Barat', lat: -6.9794, lng: 110.3842 },
-    { name: 'Semarang Timur', lat: -6.9818, lng: 110.4358 },
-    { name: 'Semarang Selatan', lat: -6.9994, lng: 110.4183 },
-    { name: 'Semarang Utara', lat: -6.9536, lng: 110.4158 },
-    { name: 'Pedurungan', lat: -7.0041, lng: 110.4578 },
-    { name: 'Tembalang', lat: -7.0514, lng: 110.4428 },
-    { name: 'Banyumanik', lat: -7.0653, lng: 110.4142 },
-    { name: 'Gunungpati', lat: -7.0608, lng: 110.3664 },
-    { name: 'Ngaliyan', lat: -6.9986, lng: 110.3475 }
-  ];
+  const [latitude, setLatitude] = useState(SEMARANG_CENTER.lat);
+  const [longitude, setLongitude] = useState(SEMARANG_CENTER.lng);
 
   if (!currentUser) return null;
 
@@ -77,17 +64,13 @@ export const CitizenCreateComplaint = () => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Simulating picking map coordinates on a vector grid
-  const handleMapClick = (district) => {
-    setLatitude(district.lat);
-    setLongitude(district.lng);
-    setSelectedDistrict(district.name);
-    setAddress(prev => {
-      if (!prev || prev.includes('Kec.')) {
-        return `Kec. ${district.name}, Kota Semarang`;
-      }
-      return prev;
-    });
+  const handleLocationChange = (lat, lng) => {
+    setLatitude(lat);
+    setLongitude(lng);
+  };
+
+  const handleAddressSuggest = (suggested) => {
+    setAddress((prev) => (prev.trim() ? prev : suggested));
   };
 
   const handleSubmit = async (e) => {
@@ -101,6 +84,11 @@ export const CitizenCreateComplaint = () => {
 
     if (!title || !description || !categoryId || !address) {
       setFormError('Harap lengkapi semua kolom wajib (*)');
+      return;
+    }
+
+    if (!isInSemarangBounds(latitude, longitude)) {
+      setFormError('Titik lokasi harus berada di wilayah Kota Semarang.');
       return;
     }
 
@@ -247,43 +235,23 @@ export const CitizenCreateComplaint = () => {
             />
           </div>
 
-          {/* Interactive Map Visual Simulator */}
-          <div className="mt-2 border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col gap-2">
-            <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold">
-              <span>Peta Koordinat (Kota Semarang)</span>
-              <span className="text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md">Kec. {selectedDistrict}</span>
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] text-slate-500 font-bold">Peta OpenStreetMap (Kota Semarang)</span>
+              <button
+                type="button"
+                onClick={() => handleLocationChange(SEMARANG_CENTER.lat, SEMARANG_CENTER.lng)}
+                className="text-[10px] font-bold text-brand-600 hover:underline"
+              >
+                Reset pusat kota
+              </button>
             </div>
-            
-            {/* Visual Vector Grid of Semarang Districts */}
-            <div className="relative h-44 bg-blue-50/45 rounded-lg border border-slate-150 overflow-hidden flex flex-wrap gap-1 p-2 items-center justify-center">
-              {/* Grid Background Mock */}
-              <div className="absolute inset-0 grid grid-cols-6 grid-rows-4 gap-0 pointer-events-none opacity-20">
-                {Array.from({ length: 24 }).map((_, i) => (
-                  <div key={i} className="border border-slate-300" />
-                ))}
-              </div>
-
-              {/* District Buttons (Mocking Map Markers) */}
-              {SEMARANG_DISTRICTS.map((dist, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleMapClick(dist)}
-                  className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
-                    selectedDistrict === dist.name 
-                      ? 'bg-brand-500 border-brand-600 text-white shadow-md shadow-brand-500/20 scale-105 z-10' 
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:scale-102'
-                  }`}
-                >
-                  📍 {dist.name}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center text-[9px] text-slate-400 font-semibold px-1">
-              <span>Latitude: {latitude.toFixed(4)}</span>
-              <span>Longitude: {longitude.toFixed(4)}</span>
-            </div>
+            <LocationPickerMap
+              latitude={latitude}
+              longitude={longitude}
+              onLocationChange={handleLocationChange}
+              onAddressSuggest={handleAddressSuggest}
+            />
           </div>
         </div>
 
