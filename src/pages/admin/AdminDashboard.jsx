@@ -184,7 +184,7 @@ export const AdminDashboard = () => {
           </div>
 
           {/* Custom Custom Legend Grid */}
-          <div className="grid grid-cols-3 gap-2 border-t border-slate-50 pt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border-t border-slate-50 pt-3">
             {categoryCounts.map((entry, index) => (
               <div key={entry.name} className="flex items-center gap-1.5 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />

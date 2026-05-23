@@ -149,7 +149,8 @@ export const AdminUsers = () => {
 
       {/* Admins Table */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <table className="w-full border-collapse text-left">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
               <th className="py-4 px-6">Nama Petugas</th>
@@ -199,6 +200,7 @@ export const AdminUsers = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

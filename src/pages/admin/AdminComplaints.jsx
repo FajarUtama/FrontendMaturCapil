@@ -110,7 +110,7 @@ export const AdminComplaints = () => {
     <div className="flex flex-col gap-5 font-sans">
       
       {/* Search and Advanced Filters Control Area */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-brand-500" />
@@ -182,9 +182,49 @@ export const AdminComplaints = () => {
         </div>
       </div>
 
-      {/* Complaints Data Table */}
+      {/* Complaints — cards on mobile, table on md+ */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+        <div className="md:hidden divide-y divide-slate-100">
+          {filteredComplaints.length === 0 ? (
+            <div className="py-12 px-4 text-center text-xs text-slate-400">
+              Tidak ada data aduan yang cocok dengan filter aktif.
+            </div>
+          ) : (
+            filteredComplaints.map((comp) => {
+              const cat = categories.find((c) => c.id === comp.category_id);
+              return (
+                <div
+                  key={comp.id}
+                  className="p-4 flex flex-col gap-3 hover:bg-slate-50/50 transition-colors"
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-400">{comp.ticket_number}</span>
+                      <h4 className="font-bold text-sm text-slate-800 mt-0.5 line-clamp-2">{comp.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{comp.user_name}</p>
+                    </div>
+                    {getStatusBadge(comp.status)}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                    <span className="font-medium text-slate-500">{cat ? cat.code : comp.category_id}</span>
+                    {getPriorityBadge(comp.priority)}
+                    <span className="text-slate-400">{formatDate(comp.created_at)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/admin/complaints/${comp.id}`)}
+                    className="w-full flex items-center justify-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold px-3 py-2 rounded-xl transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Periksa Detail
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
@@ -234,8 +274,7 @@ export const AdminComplaints = () => {
           </table>
         </div>
 
-        {/* Table Footer Stats */}
-        <div className="bg-slate-50 px-6 py-3 border-t border-slate-150 flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+        <div className="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-150 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
           <span>Menampilkan {filteredComplaints.length} dari total {complaints.length} aduan</span>
           <span>Dispendukcapil Semarang</span>
         </div>

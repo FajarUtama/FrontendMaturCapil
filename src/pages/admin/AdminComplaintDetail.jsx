@@ -166,10 +166,10 @@ export const AdminComplaintDetail = () => {
     <div className="flex flex-col gap-6 font-sans print:p-0 print:bg-white">
 
       {/* Back button and document actions (Hidden in print) */}
-      <div className="flex items-center justify-between border-b border-slate-150 pb-3 print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-150 pb-3 print:hidden">
         <button
           onClick={() => navigate('/admin/complaints')}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs shrink-0"
         >
           <ArrowLeft className="w-4.5 h-4.5" />
           Daftar Pengaduan
@@ -177,10 +177,10 @@ export const AdminComplaintDetail = () => {
 
         <button
           onClick={() => setShowPrintModal(true)}
-          className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all active:scale-95 shadow-sm"
+          className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs transition-all active:scale-95 shadow-sm"
         >
-          <Printer className="w-4 h-4" />
-          Cetak Dokumen Surat Pengajuan
+          <Printer className="w-4 h-4 shrink-0" />
+          <span className="text-center">Cetak Dokumen Surat Pengajuan</span>
         </button>
       </div>
 

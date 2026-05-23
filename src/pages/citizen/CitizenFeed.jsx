@@ -58,30 +58,30 @@ export const CitizenFeed = () => {
   };
 
   return (
-    <div className="p-4 flex flex-col gap-5 animate-fade-in">
+    <div className="p-4 md:p-6 lg:p-8 flex flex-col gap-5 md:gap-6 animate-fade-in">
       
       {/* Hero Section */}
-      <div className="bg-linear-to-tr from-brand-700 to-brand-500 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-linear-to-tr from-brand-700 to-brand-500 rounded-2xl p-5 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-10 text-9xl select-none pointer-events-none">
           🏛️
         </div>
         <span className="text-[10px] uppercase font-extrabold tracking-widest bg-white/20 px-2 py-0.5 rounded-md">
           Portal Pelayanan
         </span>
-        <h2 className="text-xl font-bold mt-2 leading-tight">Matur, Dispendukcapil Semarang!</h2>
-        <p className="text-xs text-brand-50/80 mt-1 max-w-[280px]">
+        <h2 className="text-xl md:text-3xl font-bold mt-2 leading-tight">Matur, Dispendukcapil Semarang!</h2>
+        <p className="text-xs md:text-sm text-brand-50/80 mt-1 max-w-xl">
           Sampaikan aduan Anda mengenai administrasi kependudukan di Semarang secara langsung, cepat, dan transparan.
         </p>
         <button 
           onClick={() => navigate('/maturcapil/create')}
-          className="mt-4 bg-white text-brand-700 font-bold text-xs px-4 py-2 rounded-xl shadow-md hover:bg-slate-50 active:scale-95 transition-all"
+          className="mt-4 md:mt-6 bg-white text-brand-700 font-bold text-xs md:text-sm px-4 py-2 md:px-5 md:py-2.5 rounded-xl shadow-md hover:bg-slate-50 active:scale-95 transition-all"
         >
           Buat Laporan Baru
         </button>
       </div>
 
       {/* Mini Stats Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-4">
         <div className="bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-xs">
           <ClipboardList className="w-5 h-5 mx-auto text-slate-500" />
           <h5 className="font-extrabold text-lg text-slate-800 mt-1">{totalReports}</h5>
@@ -112,8 +112,8 @@ export const CitizenFeed = () => {
           />
         </div>
 
-        {/* Category Horizontal Filter Scroll */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
+        {/* Category Filter */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0 scrollbar-none">
           <button 
             onClick={() => setSelectedCategory('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-colors ${
@@ -140,7 +140,7 @@ export const CitizenFeed = () => {
         </div>
 
         {/* Status Pills */}
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5 md:gap-2">
           {['all', 'Menunggu Verifikasi', 'Diproses', 'Selesai'].map(status => (
             <button 
               key={status}
@@ -158,9 +158,10 @@ export const CitizenFeed = () => {
       </div>
 
       {/* Complaints Feed List */}
-      <div className="flex flex-col gap-4">
-        <h4 className="font-bold text-xs text-slate-400 uppercase tracking-widest mt-2">Aduan Publik Terkini</h4>
+      <div className="flex flex-col gap-4 md:gap-5">
+        <h4 className="font-bold text-xs md:text-sm text-slate-400 uppercase tracking-widest">Aduan Publik Terkini</h4>
         
+        <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-5">
         {filteredComplaints.length === 0 ? (
           <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center text-slate-400 shadow-xs">
             <ClipboardList className="w-10 h-10 mx-auto opacity-30 mb-2" />
@@ -238,6 +239,7 @@ export const CitizenFeed = () => {
             </div>
           ))
         )}
+        </div>
       </div>
     </div>
   );
