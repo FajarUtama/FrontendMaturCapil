@@ -23,7 +23,7 @@ export const CitizenLayout = () => {
   };
 
   return (
-    <div className="fixed inset-0 md:static md:inset-auto md:min-h-screen bg-slate-100 md:bg-slate-50 flex flex-col overflow-hidden overscroll-none">
+    <div className="fixed inset-0 max-md:overflow-hidden md:relative md:inset-auto md:min-h-screen bg-slate-100 md:bg-slate-50 flex flex-col max-md:overscroll-none">
       <NotificationToast />
 
       <header className="bg-white border-b border-slate-200 shrink-0 z-20 shadow-xs pt-[max(0.75rem,env(safe-area-inset-top))]">
@@ -135,7 +135,7 @@ export const CitizenLayout = () => {
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50 pb-4 md:pb-8">
+      <main className="flex-1 min-h-0 max-md:overflow-y-auto max-md:overscroll-contain md:flex-none md:overflow-visible bg-slate-50 pb-4 md:pb-8">
         <div className="max-w-6xl mx-auto w-full">
           <Outlet />
         </div>
