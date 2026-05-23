@@ -51,7 +51,7 @@ export const AdminLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex text-slate-800 font-sans">
+    <div className="h-screen bg-slate-50 flex text-slate-800 font-sans overflow-hidden">
       {/* Global Notification Toast */}
       <NotificationToast />
 
@@ -177,9 +177,9 @@ export const AdminLayout = () => {
       </aside>
 
       {/* Main Body */}
-      <div className="flex-grow flex flex-col min-w-0">
-        {/* Header Navbar */}
-        <header className="h-16 bg-white border-b border-slate-200/80 px-6 flex justify-between items-center sticky top-0 z-10">
+      <div className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
+        {/* Header Navbar — shrink-0 agar tetap di atas saat main di-scroll */}
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200/80 px-6 flex justify-between items-center z-10">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -245,7 +245,7 @@ export const AdminLayout = () => {
         </header>
 
         {/* Main Content Pane */}
-        <main className="flex-grow p-6 overflow-y-auto max-w-7xl w-full mx-auto animate-fade-in">
+        <main className="flex-1 min-h-0 p-6 overflow-y-auto max-w-7xl w-full mx-auto animate-fade-in">
           <Outlet />
         </main>
       </div>

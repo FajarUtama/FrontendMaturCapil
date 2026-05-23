@@ -21,10 +21,10 @@ export const CitizenLayout = () => {
       <NotificationToast />
 
       {/* Main Mobile Screen Wrapper */}
-      <div className="w-full md:max-w-md md:rounded-3xl md:shadow-2xl bg-white min-h-screen md:min-h-[850px] md:max-h-[900px] flex flex-col overflow-hidden relative border border-slate-200">
+      <div className="w-full md:max-w-md md:rounded-3xl md:shadow-2xl bg-white h-[100dvh] md:h-auto md:min-h-[850px] md:max-h-[900px] flex flex-col overflow-hidden relative border border-slate-200">
         
-        {/* Header */}
-        <header className="bg-white border-b border-slate-100 px-4 py-3 sticky top-0 z-20 flex justify-between items-center shadow-xs">
+        {/* Header — shrink-0 agar tetap di atas saat main di-scroll */}
+        <header className="bg-white border-b border-slate-100 px-4 py-3 shrink-0 z-20 flex justify-between items-center shadow-xs">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/maturcapil')}>
             <span className="text-2xl">🏛️</span>
             <div>
@@ -116,12 +116,12 @@ export const CitizenLayout = () => {
         </header>
 
         {/* Content Area */}
-        <main className="flex-grow overflow-y-auto pb-24 bg-slate-50">
+        <main className="flex-1 min-h-0 overflow-y-auto pb-24 bg-slate-50">
           <Outlet />
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="sticky bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-100 py-2.5 px-6 flex justify-around items-center z-20 shadow-lg flex-shrink-0">
+        <nav className="shrink-0 bg-white/80 backdrop-blur-md border-t border-slate-100 py-2.5 px-6 flex justify-around items-center z-20 shadow-lg">
           <NavLink 
             to="/maturcapil" 
             end
