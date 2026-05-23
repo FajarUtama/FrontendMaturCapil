@@ -5,8 +5,9 @@
 
 Dokumen ini untuk tim **Backend** (salinan kontrak awal). Frontend (`MaturCapilFrontend`) memakai layer service di `src/services/` dengan asumsi kontrak di bawah ini.
 
-**Base URL (contoh):** `https://api.example.com/api/v1`  
-**Env FE:** `VITE_API_BASE_URL`
+**Base URL production (Railway):** `https://backendmaturcapil-production.up.railway.app/api/v1`  
+**Swagger:** [backendmaturcapil-production.up.railway.app/docs](https://backendmaturcapil-production.up.railway.app/docs)  
+**Env FE:** `VITE_API_BASE_URL`, `VITE_UPLOADS_ORIGIN`
 
 ---
 

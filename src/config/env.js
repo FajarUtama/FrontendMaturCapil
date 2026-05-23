@@ -6,9 +6,12 @@
 /** @returns {boolean} true = pakai MockDataContext (default) */
 export const isMockApi = () => import.meta.env.VITE_USE_MOCK_API !== 'false';
 
+const DEFAULT_API_BASE_URL =
+  'https://backendmaturcapil-production.up.railway.app/api/v1';
+
 /** @returns {string} Base URL backend tanpa trailing slash */
 export const getApiBaseUrl = () => {
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+  const base = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
   return base.replace(/\/$/, '');
 };
 
