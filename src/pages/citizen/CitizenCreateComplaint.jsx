@@ -69,8 +69,8 @@ export const CitizenCreateComplaint = () => {
     setLongitude(lng);
   };
 
-  const handleAddressSuggest = (suggested) => {
-    setAddress((prev) => (prev.trim() ? prev : suggested));
+  const handleAddressFromMap = (suggested) => {
+    setAddress(suggested);
   };
 
   const handleSubmit = async (e) => {
@@ -235,22 +235,15 @@ export const CitizenCreateComplaint = () => {
             />
           </div>
 
-          <div className="mt-2 flex flex-col gap-2">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-slate-500 font-bold">Peta OpenStreetMap (Kota Semarang)</span>
-              <button
-                type="button"
-                onClick={() => handleLocationChange(SEMARANG_CENTER.lat, SEMARANG_CENTER.lng)}
-                className="text-[10px] font-bold text-brand-600 hover:underline"
-              >
-                Reset pusat kota
-              </button>
-            </div>
+          <div className="mt-2">
+            <p className="text-[10px] text-slate-500 font-bold mb-2">
+              Peta lokasi — GPS akurat, pencarian, atau titik manual
+            </p>
             <LocationPickerMap
               latitude={latitude}
               longitude={longitude}
               onLocationChange={handleLocationChange}
-              onAddressSuggest={handleAddressSuggest}
+              onAddressChange={handleAddressFromMap}
             />
           </div>
         </div>

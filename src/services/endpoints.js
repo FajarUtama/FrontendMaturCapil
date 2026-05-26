@@ -43,4 +43,8 @@ export const API_ENDPOINTS = {
     list: 'GET /audit-logs',
     export: 'GET /audit-logs/export',
   },
+  uploads: {
+    single: 'POST /uploads?folder=complaints|evidence_after|documents',
+    batch: 'POST /uploads/batch?folder=complaints|evidence_after|documents',
+  },
 };

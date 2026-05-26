@@ -10,4 +10,5 @@ export * as complaintService from './complaintService';
 export * as userService from './userService';
 export * as categoryService from './categoryService';
 export * as auditService from './auditService';
+export * as uploadService from './uploadService';
 export * from './mappers';

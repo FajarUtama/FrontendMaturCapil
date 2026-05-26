@@ -1,33 +1,7 @@
 import { apiRequest, toServiceResult } from './apiClient';
 import { mapComplaint } from './mappers';
 import { photosToUploadBlobs } from '../utils/fileHelpers';
-
-const buildComplaintFormData = (payload) => {
-  const fd = new FormData();
-  fd.append('title', payload.title);
-  fd.append('description', payload.description);
-  fd.append('category_id', payload.categoryId);
-  fd.append('priority', payload.priority || 'Sedang');
-  fd.append('latitude', String(payload.latitude));
-  fd.append('longitude', String(payload.longitude));
-  fd.append('address', payload.address);
-
-  const blobs = photosToUploadBlobs(payload.photos || []);
-  blobs.forEach((blob, index) => {
-    fd.append('photos[]', blob, `photo-${index}.jpg`);
-  });
-  return fd;
-};
-
-const buildCloseFormData = (resolutionNote, photos = []) => {
-  const fd = new FormData();
-  fd.append('resolution_note', resolutionNote);
-  const blobs = photosToUploadBlobs(photos);
-  blobs.forEach((blob, index) => {
-    fd.append('evidence_after[]', blob, `evidence-${index}.jpg`);
-  });
-  return fd;
-};
+import { uploadBatch } from './uploadService';
 
 /** @param {Record<string, unknown>} [params] */
 export const listComplaints = (params) =>
@@ -54,12 +28,11 @@ export const getUserComplaints = (userId) =>
 export const createComplaint = (payload) =>
   toServiceResult(async () => {
     const blobs = photosToUploadBlobs(payload.photos || []);
+    let photoUrls = [];
     if (blobs.length > 0) {
-      const { data, message } = await apiRequest('/complaints', {
-        method: 'POST',
-        formData: buildComplaintFormData(payload),
-      });
-      return { success: true, complaint: mapComplaint(data), message };
+      const uploadRes = await uploadBatch(blobs, 'complaints');
+      if (!uploadRes.success) return uploadRes;
+      photoUrls = uploadRes.urls || [];
     }
     const { data, message, ...meta } = await apiRequest('/complaints', {
       method: 'POST',
@@ -71,6 +44,7 @@ export const createComplaint = (payload) =>
         latitude: payload.latitude,
         longitude: payload.longitude,
         address: payload.address,
+        photos: photoUrls,
       },
     });
     return { success: true, complaint: mapComplaint(data), message, ...meta };
@@ -88,16 +62,18 @@ export const updateComplaintStatus = (id, status, note) =>
 export const closeComplaint = (id, resolutionNote, evidenceAfterPhotos = []) =>
   toServiceResult(async () => {
     const blobs = photosToUploadBlobs(evidenceAfterPhotos);
+    let evidenceUrls = [];
     if (blobs.length > 0) {
-      const { data } = await apiRequest(`/complaints/${id}/close`, {
-        method: 'POST',
-        formData: buildCloseFormData(resolutionNote, evidenceAfterPhotos),
-      });
-      return { success: true, complaint: mapComplaint(data) };
+      const uploadRes = await uploadBatch(blobs, 'evidence_after');
+      if (!uploadRes.success) return uploadRes;
+      evidenceUrls = uploadRes.urls || [];
     }
     const { data } = await apiRequest(`/complaints/${id}/close`, {
       method: 'POST',
-      body: { resolution_note: resolutionNote },
+      body: {
+        resolution_note: resolutionNote,
+        evidence_after_photos: evidenceUrls,
+      },
     });
     return { success: true, complaint: mapComplaint(data) };
   });
