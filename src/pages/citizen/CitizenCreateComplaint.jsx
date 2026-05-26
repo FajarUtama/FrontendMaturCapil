@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppData } from '../../context/AppDataContext';
-import { ClipboardList, MapPin, Upload, X, ShieldAlert, ArrowRight, Mail } from 'lucide-react';
+import { ClipboardList, MapPin, Upload, X, ShieldAlert, ArrowRight, Mail, Loader2 } from 'lucide-react';
 import { LocationPickerMap, SEMARANG_CENTER } from '../../components/map/LocationPickerMap';
 import { isInSemarangBounds } from '../../constants/semarangMap';
+import { processComplaintImageFile } from '../../utils/imageProcessing';
+import { photosToDataUrls } from '../../utils/fileHelpers';
+import { isMockApi } from '../../config/env';
+import { SubmitOverlay } from '../../components/ui/SubmitOverlay';
 
 export const CitizenCreateComplaint = () => {
   const { currentUser, activeCategories: categories, createComplaint, getUserComplaints } = useAppData();
@@ -22,9 +26,12 @@ export const CitizenCreateComplaint = () => {
   const [categoryId, setCategoryId] = useState('');
   const [priority, setPriority] = useState('Sedang');
   const [address, setAddress] = useState('');
-  const [photos, setPhotos] = useState([]); // Base64 data urls
+  const [photos, setPhotos] = useState([]);
   const [photoError, setPhotoError] = useState('');
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
   
   // Custom Map Coordinate Selection States
   const [latitude, setLatitude] = useState(SEMARANG_CENTER.lat);
@@ -36,32 +43,41 @@ export const CitizenCreateComplaint = () => {
   const emailNotVerified = !currentUser.email_verified;
   const atReportLimit = emailNotVerified && myComplaintCount >= 1;
 
-  // Handle Image upload with base64 conversion & validation (max 5MB)
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
     setPhotoError('');
     const files = Array.from(e.target.files);
-    
+    e.target.value = '';
+
     if (photos.length + files.length > 3) {
       setPhotoError('Maksimal upload 3 foto bukti.');
       return;
     }
 
-    files.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        setPhotoError('Ukuran file melebihi 5MB.');
-        return;
-      }
+    setPhotoProcessing(true);
+    const added = [];
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotos(prev => [...prev, reader.result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    for (const file of files) {
+      if (photos.length + added.length >= 3) {
+        setPhotoError('Maksimal upload 3 foto bukti.');
+        break;
+      }
+      try {
+        const processed = await processComplaintImageFile(file);
+        added.push({ id: crypto.randomUUID(), ...processed });
+      } catch (err) {
+        setPhotoError(err.message || 'Gagal memproses foto.');
+        break;
+      }
+    }
+
+    if (added.length > 0) {
+      setPhotos((prev) => [...prev, ...added]);
+    }
+    setPhotoProcessing(false);
   };
 
   const removePhoto = (index) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleLocationChange = (lat, lng) => {
@@ -75,6 +91,7 @@ export const CitizenCreateComplaint = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting || photoProcessing) return;
     setFormError('');
 
     if (atReportLimit) {
@@ -92,32 +109,52 @@ export const CitizenCreateComplaint = () => {
       return;
     }
 
-    const result = await createComplaint({
-      title,
-      description,
-      categoryId,
-      priority,
-      latitude,
-      longitude,
-      address,
-      photos
-    });
+    setIsSubmitting(true);
+    setSubmitMessage(
+      photos.length > 0
+        ? 'Mengunggah foto dan menyimpan laporan…'
+        : 'Menyimpan laporan pengaduan…'
+    );
 
-    if (result.needsEmailVerification) {
-      setFormError(result.message);
-      return;
-    }
+    try {
+      const photoPayload = isMockApi() ? photosToDataUrls(photos) : photos;
 
-    if (result.success) {
-      // Redirect to complaint history page after creation
-      navigate('/maturcapil/history');
-    } else {
-      setFormError(result.message);
+      const result = await createComplaint({
+        title,
+        description,
+        categoryId,
+        priority,
+        latitude,
+        longitude,
+        address,
+        photos: photoPayload,
+      });
+
+      if (result.needsEmailVerification) {
+        setFormError(result.message);
+        return;
+      }
+
+      if (result.success) {
+        setSubmitMessage('Laporan berhasil disimpan. Mengalihkan…');
+        navigate('/maturcapil/history');
+        return;
+      }
+
+      setFormError(result.message || 'Gagal menyimpan laporan. Silakan coba lagi.');
+    } catch {
+      setFormError('Koneksi bermasalah. Periksa jaringan Anda lalu coba lagi.');
+    } finally {
+      setIsSubmitting(false);
+      setSubmitMessage('');
     }
   };
 
+  const formLocked = atReportLimit || isSubmitting || photoProcessing;
+
   return (
     <div className="p-4 flex flex-col gap-5 animate-slide-up">
+      {isSubmitting && <SubmitOverlay message={submitMessage} />}
       
       {/* Page Title */}
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -165,7 +202,7 @@ export const CitizenCreateComplaint = () => {
       )}
 
       {/* Main Form */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" style={{ opacity: atReportLimit ? 0.6 : 1 }}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" style={{ opacity: formLocked && !isSubmitting ? 0.6 : 1 }}>
         
         {/* Title */}
         <div className="flex flex-col gap-1">
@@ -259,8 +296,8 @@ export const CitizenCreateComplaint = () => {
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             {/* Image Preview Box */}
             {photos.map((photo, index) => (
-              <div key={index} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden group">
-                <img src={photo} alt="Preview" className="w-full h-full object-cover" />
+              <div key={photo.id ?? index} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden group">
+                <img src={photo.preview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removePhoto(index)}
@@ -273,15 +310,27 @@ export const CitizenCreateComplaint = () => {
 
             {/* Upload Button */}
             {photos.length < 3 && (
-              <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-350 hover:border-brand-500 bg-slate-50 hover:bg-white flex flex-col justify-center items-center gap-1 cursor-pointer transition-all">
-                <Upload className="w-5 h-5 text-slate-400" />
-                <span className="text-[9px] text-slate-400 font-semibold">Upload</span>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  multiple 
+              <label
+                className={`w-20 h-20 rounded-xl border-2 border-dashed border-slate-350 hover:border-brand-500 bg-slate-50 hover:bg-white flex flex-col justify-center items-center gap-1 transition-all ${
+                  photoProcessing ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
+                }`}
+              >
+                {photoProcessing ? (
+                  <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
+                ) : (
+                  <Upload className="w-5 h-5 text-slate-400" />
+                )}
+                <span className="text-[9px] text-slate-400 font-semibold">
+                  {photoProcessing ? 'Proses…' : 'Upload'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  multiple
+                  disabled={photoProcessing || isSubmitting}
                   onChange={handlePhotoUpload}
-                  className="hidden" 
+                  className="hidden"
                 />
               </label>
             )}
@@ -289,13 +338,22 @@ export const CitizenCreateComplaint = () => {
         </div>
 
         {/* Submit */}
-        <button 
+        <button
           type="submit"
-          disabled={atReportLimit}
+          disabled={formLocked}
           className="mt-4 w-full bg-brand-500 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-brand-600 active:scale-98 transition-all shadow-md shadow-brand-500/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Kirim Laporan Pengaduan
-          <ArrowRight className="w-4 h-4" />
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Menyimpan…
+            </>
+          ) : (
+            <>
+              Kirim Laporan Pengaduan
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
         </button>
       </form>
     </div>

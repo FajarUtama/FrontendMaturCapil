@@ -9,14 +9,32 @@ export const dataUrlToBlob = (dataUrl) => {
   return new Blob([bytes], { type: mime });
 };
 
-/** @param {(string|Blob|File)[]} photos @returns {Blob[]} */
+/**
+ * @param {Array<string|Blob|File|{ blob?: Blob, dataUrl?: string }>} photos
+ * @returns {Blob[]}
+ */
 export const photosToUploadBlobs = (photos = []) =>
   photos
-    .map((photo, index) => {
+    .map((photo) => {
+      if (photo?.blob instanceof Blob) return photo.blob;
       if (photo instanceof Blob) return photo;
       if (typeof photo === 'string' && photo.startsWith('data:')) {
-        return dataUrlToBlob(photo) || null;
+        return dataUrlToBlob(photo);
       }
+      if (photo?.dataUrl?.startsWith?.('data:')) {
+        return dataUrlToBlob(photo.dataUrl);
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+/** Untuk mock / fallback yang masih pakai data URL */
+export const photosToDataUrls = (photos = []) =>
+  photos
+    .map((photo) => {
+      if (typeof photo === 'string' && photo.startsWith('data:')) return photo;
+      if (photo?.dataUrl?.startsWith?.('data:')) return photo.dataUrl;
+      if (photo?.preview?.startsWith?.('data:')) return photo.preview;
       return null;
     })
     .filter(Boolean);

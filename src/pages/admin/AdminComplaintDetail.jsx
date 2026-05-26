@@ -17,8 +17,13 @@ import {
   BadgeAlert,
   User,
   Upload,
-  X
+  X,
+  Loader2,
 } from 'lucide-react';
+import { processComplaintImageFile } from '../../utils/imageProcessing';
+import { photosToDataUrls } from '../../utils/fileHelpers';
+import { isMockApi } from '../../config/env';
+import { SubmitOverlay } from '../../components/ui/SubmitOverlay';
 
 export const AdminComplaintDetail = () => {
   const { id } = useParams();
@@ -45,6 +50,9 @@ export const AdminComplaintDetail = () => {
   const [resNote, setResNote] = useState('');
   const [afterPhotos, setAfterPhotos] = useState([]);
   const [resError, setResError] = useState('');
+  const [afterPhotoProcessing, setAfterPhotoProcessing] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [closeMessage, setCloseMessage] = useState('');
 
   // Print preview state
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -102,40 +110,60 @@ export const AdminComplaintDetail = () => {
     setShowRejectForm(false);
   };
 
-  // Resolution upload handler
-  const handleAfterPhotoUpload = (e) => {
+  const handleAfterPhotoUpload = async (e) => {
     setResError('');
     const files = Array.from(e.target.files);
+    e.target.value = '';
 
-    if (afterPhotos.length + files.length > 1) {
+    if (files.length > 1 || afterPhotos.length > 0) {
       setResError('Hanya diperlukan 1 foto bukti perbaikan.');
       return;
     }
 
-    files.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        setResError('Ukuran file melebihi 5MB.');
-        return;
-      }
+    const file = files[0];
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAfterPhotos([reader.result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setAfterPhotoProcessing(true);
+    try {
+      const processed = await processComplaintImageFile(file);
+      setAfterPhotos([{ id: crypto.randomUUID(), ...processed }]);
+    } catch (err) {
+      setResError(err.message || 'Gagal memproses foto.');
+    } finally {
+      setAfterPhotoProcessing(false);
+    }
   };
 
   const handleResolveSubmit = async (e) => {
     e.preventDefault();
+    if (isClosing || afterPhotoProcessing) return;
     if (!resNote.trim()) {
       setResError('Mohon isi catatan tindakan penyelesaian.');
       return;
     }
 
-    await closeComplaint(complaint.id, resNote, afterPhotos);
-    setResNote('');
-    setAfterPhotos([]);
+    setIsClosing(true);
+    setCloseMessage(
+      afterPhotos.length > 0
+        ? 'Mengunggah bukti dan menutup aduan…'
+        : 'Menutup aduan…'
+    );
+
+    try {
+      const photoPayload = isMockApi() ? photosToDataUrls(afterPhotos) : afterPhotos;
+      const result = await closeComplaint(complaint.id, resNote, photoPayload);
+      if (result?.success === false) {
+        setResError(result.message || 'Gagal menutup aduan.');
+        return;
+      }
+      setResNote('');
+      setAfterPhotos([]);
+    } catch {
+      setResError('Koneksi bermasalah. Silakan coba lagi.');
+    } finally {
+      setIsClosing(false);
+      setCloseMessage('');
+    }
   };
 
   const triggerPrint = () => {
@@ -158,6 +186,7 @@ export const AdminComplaintDetail = () => {
 
   return (
     <div className="flex flex-col gap-6 font-sans print:p-0 print:bg-white">
+      {isClosing && <SubmitOverlay message={closeMessage} />}
 
       {/* Back button and document actions (Hidden in print) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-150 pb-3 print:hidden">
@@ -367,8 +396,8 @@ export const AdminComplaintDetail = () => {
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     {/* Preview box */}
                     {afterPhotos.map((photo, idx) => (
-                      <div key={idx} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden">
-                        <img src={photo} alt="Penyelesaian" className="w-full h-full object-cover" />
+                      <div key={photo.id ?? idx} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden">
+                        <img src={photo.preview ?? photo} alt="Penyelesaian" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => setAfterPhotos([])}
@@ -381,12 +410,23 @@ export const AdminComplaintDetail = () => {
 
                     {/* Uploader button */}
                     {afterPhotos.length === 0 && (
-                      <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50 hover:bg-white flex flex-col justify-center items-center gap-1 cursor-pointer transition-colors shadow-xs">
-                        <Upload className="w-5 h-5 text-slate-400" />
-                        <span className="text-[9px] text-slate-450 font-bold">Upload</span>
+                      <label
+                        className={`w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50 hover:bg-white flex flex-col justify-center items-center gap-1 transition-colors shadow-xs ${
+                          afterPhotoProcessing || isClosing ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
+                        }`}
+                      >
+                        {afterPhotoProcessing ? (
+                          <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
+                        ) : (
+                          <Upload className="w-5 h-5 text-slate-400" />
+                        )}
+                        <span className="text-[9px] text-slate-450 font-bold">
+                          {afterPhotoProcessing ? 'Proses…' : 'Upload'}
+                        </span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={afterPhotoProcessing || isClosing}
                           onChange={handleAfterPhotoUpload}
                           className="hidden"
                         />
@@ -397,10 +437,20 @@ export const AdminComplaintDetail = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/10 cursor-pointer active:scale-98"
+                  disabled={isClosing || afterPhotoProcessing}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/10 cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle2 className="w-4.5 h-4.5" />
-                  Selesaikan & Tutup Aduan Warga
+                  {isClosing ? (
+                    <>
+                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                      Menyimpan…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4.5 h-4.5" />
+                      Selesaikan & Tutup Aduan Warga
+                    </>
+                  )}
                 </button>
               </form>
             )}
